@@ -43,4 +43,32 @@ public class ItemSearchTests
     {
         Assert.Single(ItemSearch.Filter(Items, "  gold  "));
     }
+
+    [Fact]
+    public void ExactNameMatchBeatsAContainsMatchEvenWhenAlphabeticallyLater()
+    {
+        // "AA Which Has Iron In It" sorts alphabetically before "Iron", so this only passes if the exact
+        // match is genuinely ranked above the contains match rather than relying on the alphabetical tiebreak.
+        var items = new List<ItemEntry>
+        {
+            new ItemEntry { Id = "item_exact", Name = "Iron", Rarity = "Common" },
+            new ItemEntry { Id = "item_contains", Name = "AA Which Has Iron In It", Rarity = "Common" },
+        };
+
+        Assert.Equal(new[] { "item_exact", "item_contains" }, ItemSearch.Filter(items, "iron").Select(i => i.Id));
+    }
+
+    [Fact]
+    public void NameContainsMatchBeatsAnIdOnlyMatchEvenWhenAlphabeticallyLater()
+    {
+        // "Widget" sorts alphabetically before "Zebra Ore", so this only passes if the name match is
+        // genuinely ranked above the ID-only match rather than relying on the alphabetical tiebreak.
+        var items = new List<ItemEntry>
+        {
+            new ItemEntry { Id = "item_misc", Name = "Zebra Ore", Rarity = "Common" },
+            new ItemEntry { Id = "item_ore_sample", Name = "Widget", Rarity = "Common" },
+        };
+
+        Assert.Equal(new[] { "item_misc", "item_ore_sample" }, ItemSearch.Filter(items, "ore").Select(i => i.Id));
+    }
 }

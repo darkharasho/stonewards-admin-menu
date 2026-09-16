@@ -70,6 +70,15 @@ namespace AdminMenu
             void RenderResults()
             {
                 scrollView.Clear();
+
+                if (!PlayerActions.ActionsAllowed)
+                {
+                    var note = new Label("Host-only actions is on and you are not the host.");
+                    note.style.color = Theme.Muted;
+                    note.style.marginBottom = 12f;
+                    scrollView.Add(note);
+                }
+
                 var results = ItemSearch.Filter(all, search.value);
                 var shown = 0;
                 foreach (var item in results)
@@ -145,6 +154,7 @@ namespace AdminMenu
                     ItemCatalog.SpawnToGround(item, count);
             }) { text = "Spawn" };
             Theme.StyleButton(spawn);
+            spawn.SetEnabled(PlayerActions.ActionsAllowed);
             row.Add(spawn);
 
             return row;

@@ -18,7 +18,7 @@ namespace AdminMenu
             ById.Clear();
             var manager = ItemManager.Instance;
             var database = manager == null ? null : Traverse.Create(manager).Field<ItemDatabaseSO>("itemDataBase").Value;
-            if (database == null)
+            if (database == null || database.items == null)
             {
                 Plugin.Log.LogWarning("Item database not available yet; load into the hub or a level first");
                 return new List<ItemEntry>();
