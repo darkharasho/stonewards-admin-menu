@@ -1,4 +1,3 @@
-using System;
 using UnityEngine.UIElements;
 
 namespace AdminMenu
@@ -13,7 +12,12 @@ namespace AdminMenu
         private static Hud _attachedHud;
         private static InputManager.InputState _stateBeforeOpen;
 
-        public static bool IsOpen => _panel != null && _panel.IsOpen;
+        /// <summary>
+        /// The root having no panel means the HUD document we were attached to has been destroyed — a scene
+        /// load with the menu open. Without that check the menu stays "logically open" while invisible, and
+        /// the next hotkey press is swallowed closing it.
+        /// </summary>
+        public static bool IsOpen => _panel != null && _panel.IsOpen && _panel.Root.panel != null;
 
         public static void Toggle()
         {

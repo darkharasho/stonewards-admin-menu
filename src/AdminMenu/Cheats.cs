@@ -1,4 +1,3 @@
-using System.Linq;
 using UnityEngine;
 
 namespace AdminMenu
@@ -21,13 +20,17 @@ namespace AdminMenu
         private static float _appliedMultiplier;
         private static float _nextHealTime;
 
-        public static bool GodModeActive => Plugin.GodMode.Value && PlayerActions.ActionsAllowed;
+        // Rebuilt only when the configured multiplier changes: StatModifier is immutable, and the same
+        // instance is re-added every frame while the cheat is on (see ApplyPickaxe).
+        private static StatModifier _pickaxeModifier;
+
+        public static bool GodModeActive => Plugin.GodMode.Value;
         public static bool InfiniteStaminaActive => Plugin.InfiniteStamina.Value;
 
         /// <summary>Called every frame from <see cref="Plugin.Update"/>.</summary>
         public static void Update()
         {
-            var player = FirstPersonController.LocalPlayers.FirstOrDefault(p => p != null && p.isLocalPlayer);
+            var player = PlayerActions.LocalPlayer();
             if (player == null || player.PlayerStats == null)
             {
                 _pickaxeApplied = false;
@@ -56,6 +59,14 @@ namespace AdminMenu
         public static void ApplyPickaxe(FirstPersonController player)
         {
             var stats = player.PlayerStats;
+
+            // DigStrength, DiggingSpeed and HeavyDigMultiplier are assigned only by
+            // PlayerStats.InitCharacterStats, which runs from LocalInit/ServerInit — after OnStartClient has
+            // already put the controller in FirstPersonController.LocalPlayers. PlayerStats itself is a
+            // serialized field and non-null from spawn, so it cannot stand in for this check.
+            if (stats.DigStrength == null || stats.DiggingSpeed == null || stats.HeavyDigMultiplier == null)
+                return;
+
             var wanted = Plugin.SuperPickaxe.Value;
             var multiplier = Mathf.Max(1f, Plugin.SuperPickaxeMultiplier.Value);
 
@@ -64,7 +75,10 @@ namespace AdminMenu
                 // CharacterStat.CalculateFinalValue applies PERCENT_MULT as `num3 *= 1f + mod.Value`, so the
                 // modifier value is a percentage to add, not a factor: to get a "x multiplier" we pass
                 // (multiplier - 1f), not multiplier itself.
-                var mod = new StatModifier(multiplier - 1f, StatModType.PERCENT_MULT, ModifierSource);
+                if (_pickaxeModifier == null || !Mathf.Approximately(multiplier, _appliedMultiplier))
+                    _pickaxeModifier = new StatModifier(multiplier - 1f, StatModType.PERCENT_MULT, ModifierSource);
+
+                var mod = _pickaxeModifier;
                 stats.DigStrength.AddOrReplaceModifier(mod);
                 stats.DiggingSpeed.AddOrReplaceModifier(mod);
                 stats.HeavyDigMultiplier.AddOrReplaceModifier(mod);

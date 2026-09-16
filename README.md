@@ -4,7 +4,7 @@ A BepInEx plugin for Stonewards that adds an in-game admin/cheat menu, following
 
 ## Features
 
-- **Players tab** — revive or kill any connected player.
+- **Players tab** — revive, heal, or kill any connected player.
 - **Items tab** — search and browse the item catalog and spawn any item.
 - **Cheats tab** — toggle god mode, infinite stamina, and a super pickaxe with an adjustable strength multiplier.
 - A themed, tabbed panel matching the game's own menus, not a raw debug list.

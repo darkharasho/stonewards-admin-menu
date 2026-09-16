@@ -45,7 +45,7 @@ namespace AdminMenu
             placeholder.pickingMode = PickingMode.Ignore;
             searchContainer.Add(placeholder);
 
-            var count = new IntegerField { value = 1 };
+            var count = new IntegerField("Count") { value = 1 };
             count.style.width = 70f;
             count.style.marginRight = 12f;
             toolbar.Add(count);
@@ -145,9 +145,10 @@ namespace AdminMenu
 
             var spawn = new Button(() =>
             {
+                // ItemDataSO.maxStackSize is [ConditionalField("isStackable", false)], so it is only
+                // meaningful for stackable items; anything else spawns one at a time.
                 var count = clampedCount();
-                if (!item.Stackable)
-                    count = Mathf.Min(count, item.MaxStack);
+                count = item.Stackable ? Mathf.Min(count, item.MaxStack) : 1;
                 if (toInventory.value)
                     ItemCatalog.SpawnToInventory(item, count);
                 else

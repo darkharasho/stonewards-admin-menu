@@ -1,8 +1,10 @@
+using System;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
+using AdminMenu.Patches;
 
 namespace AdminMenu
 {
@@ -14,7 +16,6 @@ namespace AdminMenu
         public const string PluginVersion = "0.1.0";
 
         internal static ManualLogSource Log;
-        internal static Plugin Instance;
 
         internal static ConfigEntry<bool> Enabled;
         internal static ConfigEntry<KeyboardShortcut> ToggleKey;
@@ -30,7 +31,6 @@ namespace AdminMenu
         private void Awake()
         {
             Log = Logger;
-            Instance = this;
 
             // Display names and order are for the in-game ModSettings menu; they don't change the .cfg.
             Enabled = Config.Bind("General", "Enabled", true, new ConfigDescription(
@@ -61,7 +61,8 @@ namespace AdminMenu
                 new ConfigurationManagerAttributes { DispName = "Super pickaxe strength", Order = 5 }));
 
             _harmony = new Harmony(PluginGuid);
-            _harmony.PatchAll(typeof(Plugin).Assembly);
+            Patch(typeof(StaminaPatches));
+            Patch(typeof(ServerUpdateHealthPatch));
 
             Log.LogInfo($"{PluginName} {PluginVersion} loaded");
         }
@@ -73,8 +74,25 @@ namespace AdminMenu
             if (Hotkey.WasPressed(ToggleKey.Value) && MenuGate.CanToggle(Enabled.Value, inGame, state, AdminMenuController.IsOpen))
                 AdminMenuController.Toggle();
 
-            if (Enabled.Value)
-                Cheats.Update();
+            // Deliberately ungated: each cheat obeys exactly its own config toggle. Gating this on Enabled
+            // would strand an applied super-pickaxe modifier, because the removal branch would stop running.
+            Cheats.Update();
+        }
+
+        /// <summary>
+        /// Patches one class at a time so a single renamed game method costs only that cheat: letting it
+        /// throw out of Awake would take the hotkey and the whole menu down with it.
+        /// </summary>
+        private void Patch(Type patchClass)
+        {
+            try
+            {
+                _harmony.PatchAll(patchClass);
+            }
+            catch (Exception e)
+            {
+                Log.LogWarning($"Could not apply {patchClass.Name}; the cheat it backs will not work: {e.Message}");
+            }
         }
 
         /// <summary>Maps the game's input state onto the handful of cases the menu gate distinguishes.</summary>

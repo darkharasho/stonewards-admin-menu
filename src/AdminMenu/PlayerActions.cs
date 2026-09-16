@@ -20,6 +20,25 @@ namespace AdminMenu
                 .OrderBy(p => p.playerName)
                 .ToList();
 
+        /// <summary>
+        /// The local player, or null if none has spawned yet. Written as a plain loop rather than
+        /// <c>FirstOrDefault</c> because the per-frame callers would otherwise box a
+        /// <see cref="List{T}"/> enumerator every frame.
+        /// </summary>
+        public static FirstPersonController LocalPlayer()
+        {
+            var players = FirstPersonController.LocalPlayers;
+            if (players == null)
+                return null;
+            for (var i = 0; i < players.Count; i++)
+            {
+                var player = players[i];
+                if (player != null && player.isLocalPlayer)
+                    return player;
+            }
+            return null;
+        }
+
         public static void Kill(FirstPersonController player)
         {
             if (!ActionsAllowed || player == null || player.PlayerStats == null || player.PlayerStats.isDead)

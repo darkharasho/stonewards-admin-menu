@@ -39,7 +39,7 @@ namespace AdminMenu
         /// <summary>Lower is better: exact name, then name prefix, then anything containing the term.</summary>
         private static int Rank(ItemEntry item, string term)
         {
-            if (Equals(item.Name, term))
+            if (EqualsTerm(item.Name, term))
                 return 0;
             if (StartsWith(item.Name, term))
                 return 1;
@@ -50,7 +50,7 @@ namespace AdminMenu
             return int.MaxValue;
         }
 
-        private static bool Equals(string text, string term) =>
+        private static bool EqualsTerm(string text, string term) =>
             text != null && string.Equals(text, term, StringComparison.OrdinalIgnoreCase);
 
         private static bool StartsWith(string text, string term) =>

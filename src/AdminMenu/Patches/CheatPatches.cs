@@ -6,6 +6,10 @@ namespace AdminMenu.Patches
     [HarmonyPatch(typeof(PlayerStats))]
     internal static class StaminaPatches
     {
+        // Resolved once at type load instead of per frame: Traverse re-walks the field every call.
+        private static readonly AccessTools.FieldRef<PlayerStats, float> CurrentStamina =
+            AccessTools.FieldRefAccess<PlayerStats, float>("currentStamina");
+
         [HarmonyPrefix]
         [HarmonyPatch("ConsumeStamina")]
         private static bool SkipConsumption(PlayerStats __instance)
@@ -20,7 +24,14 @@ namespace AdminMenu.Patches
             if (!Cheats.InfiniteStaminaActive || !IsLocal(__instance))
                 return;
             // Sprinting and climbing drain the field directly instead of calling ConsumeStamina.
-            Traverse.Create(__instance).Field<float>("currentStamina").Value = __instance.MaxStamina.Value;
+            var max = __instance.MaxStamina;
+            if (max == null)
+                return;
+            CurrentStamina(__instance) = max.Value;
+            // HandleStamina raises OnStaminaChanged with the drained value *before* this postfix restores it,
+            // so the HUD would otherwise sit permanently one frame of drain below full. Re-raise it with the
+            // restored value; the event is a public field, so the HUD's own handlers are the ones invoked.
+            __instance.OnStaminaChanged?.Invoke(max.Value, max.Value, true);
         }
 
         private static bool IsLocal(PlayerStats stats) =>
@@ -28,16 +39,22 @@ namespace AdminMenu.Patches
     }
 
     /// <summary>
-    /// Damage is decided on the server, so this only bites when you are the host. As a client, god mode
-    /// falls back to the heal-up in <see cref="Cheats.Update"/>.
+    /// <see cref="PlayerStats.ServerUpdateHealth"/> is the single funnel every health change passes through:
+    /// <c>UserCode_ServerApplyDamage</c> reaches it directly, and <see cref="FirstPersonController"/> fall
+    /// damage reaches it via <c>CmdUpdateHealth</c>. Clamping a negative delta to zero therefore blocks all
+    /// damage while leaving healing and every other positive path alone.
+    ///
+    /// The method is <c>[Server]</c>, so this only bites when you are the host. As a client, god mode falls
+    /// back to the heal-up in <see cref="Cheats.Update"/>.
     /// </summary>
-    [HarmonyPatch(typeof(PlayerStats), nameof(PlayerStats.CanTakeDamage))]
-    internal static class CanTakeDamagePatch
+    [HarmonyPatch(typeof(PlayerStats), nameof(PlayerStats.ServerUpdateHealth))]
+    internal static class ServerUpdateHealthPatch
     {
-        private static void Postfix(PlayerStats __instance, ref bool __result)
+        private static void Prefix(PlayerStats __instance, ref float _Amount)
         {
-            if (Cheats.GodModeActive && __instance != null && __instance.Player != null && __instance.Player.isLocalPlayer)
-                __result = false;
+            if (_Amount < 0f && Cheats.GodModeActive
+                && __instance != null && __instance.Player != null && __instance.Player.isLocalPlayer)
+                _Amount = 0f;
         }
     }
 }

@@ -28,10 +28,12 @@ namespace AdminMenu
             foreach (var item in database.items.Where(i => i != null && !string.IsNullOrEmpty(i.itemID)))
             {
                 ById[item.itemID] = item;
+                // A LocalizationSettings.StringDatabase lookup; resolve it once per item, not twice.
+                var localizedName = item.GetLocalizedName();
                 entries.Add(new ItemEntry
                 {
                     Id = item.itemID,
-                    Name = string.IsNullOrEmpty(item.GetLocalizedName()) ? item.itemID : item.GetLocalizedName(),
+                    Name = string.IsNullOrEmpty(localizedName) ? item.itemID : localizedName,
                     Rarity = item.Rarity.ToString(),
                     Stackable = item.isStackable,
                     MaxStack = Mathf.Max(1, item.maxStackSize),
@@ -50,7 +52,7 @@ namespace AdminMenu
 
         public static void SpawnToInventory(ItemEntry item, int count)
         {
-            var player = LocalPlayer();
+            var player = PlayerActions.LocalPlayer();
             if (item == null || player == null || !PlayerActions.ActionsAllowed)
                 return;
             player.CmdForcePickupItem(player, count, item.Id);
@@ -59,7 +61,7 @@ namespace AdminMenu
 
         public static void SpawnToGround(ItemEntry item, int count)
         {
-            var player = LocalPlayer();
+            var player = PlayerActions.LocalPlayer();
             if (item == null || player == null || ItemManager.Instance == null || !PlayerActions.ActionsAllowed)
                 return;
             // A step in front of the player, at their feet, so the drop never lands inside a wall.
@@ -67,8 +69,5 @@ namespace AdminMenu
             ItemManager.Instance.CmdInstantiatePickableNewItem(item.Id, count, position);
             Plugin.Log.LogInfo($"Spawned {count}x {item.Id} on the ground");
         }
-
-        private static FirstPersonController LocalPlayer() =>
-            FirstPersonController.LocalPlayers.FirstOrDefault(p => p != null && p.isLocalPlayer);
     }
 }
