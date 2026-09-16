@@ -30,7 +30,18 @@ namespace AdminMenu
                 }
 
                 foreach (var player in PlayerActions.Players())
-                    scrollView.Add(BuildRow(player, Refresh));
+                {
+                    try
+                    {
+                        scrollView.Add(BuildRow(player, Refresh));
+                    }
+                    catch (Exception e)
+                    {
+                        // One player's row failing to build (e.g. stats not yet synced) shouldn't blank the
+                        // rest of the list.
+                        Plugin.Log.LogWarning($"Failed to build player row for {player?.playerName}: {e}");
+                    }
+                }
             }
 
             refresh = Refresh;
@@ -63,7 +74,7 @@ namespace AdminMenu
             }
             else
             {
-                health.text = $"{Mathf.CeilToInt(stats.GetCurrentHealth())} / {Mathf.CeilToInt(stats.MaxHealth.Value)}";
+                health.text = $"{Mathf.CeilToInt(stats.GetCurrentHealth())} / {Mathf.CeilToInt(PlayerActions.MaxHealthOf(stats))}";
                 health.style.color = Theme.Muted;
             }
             health.style.width = 100f;

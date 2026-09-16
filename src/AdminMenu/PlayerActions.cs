@@ -43,7 +43,17 @@ namespace AdminMenu
             if (!ActionsAllowed || player == null || player.PlayerStats == null)
                 return;
             var stats = player.PlayerStats;
-            stats.CmdUpdateHealth(stats.MaxHealth.Value - stats.GetCurrentHealth());
+            stats.CmdUpdateHealth(MaxHealthOf(stats) - stats.GetCurrentHealth());
+            Plugin.Log.LogInfo($"Healed {player.playerName}");
         }
+
+        /// <summary>
+        /// <see cref="PlayerStats.MaxHealth"/> is only populated by <c>InitCharacterStats</c>, which a plain
+        /// client never runs for remote players (their <c>OnStartClient</c> path just calls
+        /// <c>SetPlayer</c>), so it is null there. <see cref="PlayerStats.NetworksyncMaxHealth"/> is the
+        /// synced value the game itself falls back to in that situation.
+        /// </summary>
+        public static float MaxHealthOf(PlayerStats stats) =>
+            stats.MaxHealth != null ? stats.MaxHealth.Value : stats.NetworksyncMaxHealth;
     }
 }
