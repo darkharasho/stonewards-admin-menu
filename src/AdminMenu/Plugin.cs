@@ -63,6 +63,7 @@ namespace AdminMenu
             _harmony = new Harmony(PluginGuid);
             Patch(typeof(StaminaPatches));
             Patch(typeof(ServerUpdateHealthPatch));
+            Patch(typeof(ServerUpdateHealthPercentagePatch));
 
             Log.LogInfo($"{PluginName} {PluginVersion} loaded");
         }

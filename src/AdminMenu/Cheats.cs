@@ -24,8 +24,12 @@ namespace AdminMenu
         // instance is re-added every frame while the cheat is on (see ApplyPickaxe).
         private static StatModifier _pickaxeModifier;
 
-        public static bool GodModeActive => Plugin.GodMode.Value;
-        public static bool InfiniteStaminaActive => Plugin.InfiniteStamina.Value;
+        // Every cheat is gated on Enabled as well as its own toggle. Cheats.Update itself runs unconditionally
+        // (see Plugin.Update) so that turning the mod off still reaches the removal branch below and cleans up
+        // an applied pickaxe modifier — gating the call instead would strand it until a restart.
+        public static bool GodModeActive => Plugin.Enabled.Value && Plugin.GodMode.Value;
+        public static bool InfiniteStaminaActive => Plugin.Enabled.Value && Plugin.InfiniteStamina.Value;
+        private static bool SuperPickaxeActive => Plugin.Enabled.Value && Plugin.SuperPickaxe.Value;
 
         /// <summary>Called every frame from <see cref="Plugin.Update"/>.</summary>
         public static void Update()
@@ -67,7 +71,7 @@ namespace AdminMenu
             if (stats.DigStrength == null || stats.DiggingSpeed == null || stats.HeavyDigMultiplier == null)
                 return;
 
-            var wanted = Plugin.SuperPickaxe.Value;
+            var wanted = SuperPickaxeActive;
             var multiplier = Mathf.Max(1f, Plugin.SuperPickaxeMultiplier.Value);
 
             if (wanted)
