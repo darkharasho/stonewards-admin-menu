@@ -35,7 +35,10 @@ namespace AdminMenu
                 InputManager.Instance.SetState(InputManager.InputState.GeneralMenu);
             }
             _panel.Open();
-            _panel.Root.Focus();
+            // Focusing an element whose display changed this frame can be dropped before layout resolves,
+            // and the overlay must hold focus or its Escape handler never sees a key event.
+            var root = _panel.Root;
+            root.schedule.Execute(() => root.Focus()).ExecuteLater(0L);
         }
 
         public static void Close()

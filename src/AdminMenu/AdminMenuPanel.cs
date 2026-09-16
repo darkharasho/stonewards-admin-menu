@@ -100,7 +100,9 @@ namespace AdminMenu
 
         /// <summary>
         /// Adds a tab and its content. The first tab added becomes the selected one, so the menu is never
-        /// shown with an empty content area.
+        /// shown with an empty content area. The content is styled once, here: a tab that rebuilds its own
+        /// children later must call <see cref="Theme.StyleControls"/> on what it rebuilt, because styling
+        /// registers hover callbacks and re-running it over surviving elements would stack them up.
         /// </summary>
         public void AddTab(string title, VisualElement content, Action onShown)
         {
@@ -118,6 +120,7 @@ namespace AdminMenu
             content.style.display = DisplayStyle.None;
             content.style.flexGrow = 1f;
             _content.Add(content);
+            Theme.StyleControls(content);
 
             var tab = new Tab { Button = button, Content = content, OnShown = onShown };
             _tabs.Add(tab);
@@ -163,14 +166,10 @@ namespace AdminMenu
                 Theme.SetBorder(tab.Button, 2f, tab == _selected ? Theme.Gold : Theme.Line, 4f);
         }
 
-        /// <summary>
-        /// Lets a tab rebuild itself as it comes into view, then restyles it: the controls it just added
-        /// are new elements that Unity's default skin would otherwise show through on.
-        /// </summary>
-        private void Show(Tab tab)
+        /// <summary>Lets a tab refresh itself as it comes into view.</summary>
+        private static void Show(Tab tab)
         {
             tab.OnShown?.Invoke();
-            Theme.StyleControls(tab.Content);
         }
 
         private static VisualElement Row()
