@@ -10,6 +10,7 @@
   <!-- Only the game-independent logic is tested; it's compiled in directly so no game assemblies are needed. -->
   <ItemGroup>
     <Compile Include="../../src/AdminMenu/MenuGate.cs" Link="MenuGate.cs" />
+    <Compile Include="../../src/AdminMenu/ItemSearch.cs" Link="ItemSearch.cs" />
   </ItemGroup>
 
   <ItemGroup>

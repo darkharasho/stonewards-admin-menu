@@ -91,6 +91,9 @@ namespace AdminMenu
 
                 var players = PlayersTab.Build(out var refreshPlayers);
                 _panel.AddTab("Players", players, refreshPlayers);
+
+                var items = ItemsTab.Build(out var refreshItems);
+                _panel.AddTab("Items", items, refreshItems);
             }
 
             // Same staleness check the HUD counter uses: a new Hud, or an element with no panel, means the
