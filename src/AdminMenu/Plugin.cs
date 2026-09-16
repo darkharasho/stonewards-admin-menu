@@ -77,18 +77,4 @@ namespace AdminMenu
             _harmony?.UnpatchSelf();
         }
     }
-
-    /// <summary>
-    /// Placeholder for the real menu until Task 3 builds it. Replaced, not extended, by that task.
-    /// </summary>
-    internal static class AdminMenuController
-    {
-        internal static bool IsOpen;
-
-        public static void Toggle()
-        {
-            IsOpen = !IsOpen;
-            Plugin.Log.LogInfo(IsOpen ? "Admin menu opened" : "Admin menu closed");
-        }
-    }
 }
