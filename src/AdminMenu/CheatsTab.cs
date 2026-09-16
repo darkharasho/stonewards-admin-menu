@@ -45,20 +45,27 @@ namespace AdminMenu
                     multiplierValueLabel.style.width = 50f;
                     pickaxeMultiplierRow.Add(multiplierValueLabel);
 
+                    // ConfigFile.SaveOnConfigSet defaults to true, so writing to the config entry on every
+                    // ValueChanged (which fires continuously while dragging) would rewrite the whole .cfg
+                    // dozens of times per second. Only the label tracks the drag; the entry is committed once
+                    // the drag ends (pointer released) or, for a keyboard-driven change, when focus leaves.
                     multiplierSlider.RegisterValueChangedCallback(evt =>
-                    {
-                        Plugin.SuperPickaxeMultiplier.Value = evt.newValue;
-                        multiplierValueLabel.text = $"x{evt.newValue:0.0}";
-                    });
+                        multiplierValueLabel.text = $"x{evt.newValue:0.0}");
+                    multiplierSlider.RegisterCallback<PointerUpEvent>(_ =>
+                        Plugin.SuperPickaxeMultiplier.Value = multiplierSlider.value);
+                    multiplierSlider.RegisterCallback<FocusOutEvent>(_ =>
+                        Plugin.SuperPickaxeMultiplier.Value = multiplierSlider.value);
 
                     root.Add(pickaxeMultiplierRow);
                 });
-            BuildRow(root, "Infinite stamina", Plugin.InfiniteStamina);
-            BuildRow(root, "God mode", Plugin.GodMode);
+            var infiniteStaminaToggle = BuildRow(root, "Infinite stamina", Plugin.InfiniteStamina);
+            var godModeToggle = BuildRow(root, "God mode", Plugin.GodMode);
 
             void Refresh()
             {
                 superPickaxeToggle.value = Plugin.SuperPickaxe.Value;
+                infiniteStaminaToggle.value = Plugin.InfiniteStamina.Value;
+                godModeToggle.value = Plugin.GodMode.Value;
                 if (multiplierSlider != null)
                 {
                     multiplierSlider.value = Plugin.SuperPickaxeMultiplier.Value;
