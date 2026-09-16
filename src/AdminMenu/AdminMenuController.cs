@@ -88,7 +88,9 @@ namespace AdminMenu
             {
                 _panel = new AdminMenuPanel();
                 _panel.CloseRequested += Close;
-                // Tabs are added here by the features that provide them.
+
+                var players = PlayersTab.Build(out var refreshPlayers);
+                _panel.AddTab("Players", players, refreshPlayers);
             }
 
             // Same staleness check the HUD counter uses: a new Hud, or an element with no panel, means the
