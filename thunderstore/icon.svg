@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="stone" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a4540"/>
+      <stop offset="1" stop-color="#1f1c19"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.4" r="0.6">
+      <stop offset="0" stop-color="#e0a346" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#e0a346" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe08a"/>
+      <stop offset="1" stop-color="#c8862e"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Chiselled stone tile -->
+  <rect x="0" y="0" width="256" height="256" rx="36" fill="#15130f"/>
+  <rect x="8" y="8" width="240" height="240" rx="30" fill="url(#stone)"/>
+  <path d="M8 90 L70 78 L120 96 L180 80 L248 92 M8 176 L60 168 L110 184 L190 170 L248 180 M70 78 L64 8 M180 80 L186 8 M110 184 L104 248 M190 170 L196 248"
+        stroke="#15130f" stroke-opacity="0.45" stroke-width="3" fill="none"/>
+  <rect x="8" y="8" width="240" height="240" rx="30" fill="url(#glow)"/>
+  <rect x="8" y="8" width="240" height="240" rx="30" fill="none" stroke="#6b6158" stroke-width="3"/>
+
+  <!-- Shield: admin/authority mark -->
+  <path d="M128 42 L188 64 V126 C188 168 162 198 128 214 C94 198 68 168 68 126 V64 Z"
+        fill="#231b15" stroke="url(#gold)" stroke-width="6"/>
+
+  <!-- Wrench-and-key motif -->
+  <g fill="none" stroke="url(#gold)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="112" cy="104" r="20"/>
+    <path d="M126 118 L166 158"/>
+    <path d="M150 142 L162 130"/>
+    <path d="M162 154 L174 142"/>
+  </g>
+  <circle cx="112" cy="104" r="8" fill="#15130f"/>
+</svg>

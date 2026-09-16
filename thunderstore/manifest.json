@@ -1,0 +1,9 @@
+{
+    "name": "AdminMenu",
+    "version_number": "0.1.0",
+    "website_url": "https://github.com/darkharasho/stonewards-admin-menu",
+    "description": "In-game admin menu on F1: revive or kill players, spawn any item, god mode, infinite stamina and a super pickaxe.",
+    "dependencies": [
+        "BepInEx-BepInExPack-5.4.2305"
+    ]
+}
