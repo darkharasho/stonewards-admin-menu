@@ -20,6 +20,10 @@ namespace AdminMenu
         internal static ConfigEntry<KeyboardShortcut> ToggleKey;
         internal static ConfigEntry<bool> CloseOnEscape;
         internal static ConfigEntry<bool> RequireHost;
+        internal static ConfigEntry<bool> GodMode;
+        internal static ConfigEntry<bool> InfiniteStamina;
+        internal static ConfigEntry<bool> SuperPickaxe;
+        internal static ConfigEntry<float> SuperPickaxeMultiplier;
 
         private Harmony _harmony;
 
@@ -42,6 +46,20 @@ namespace AdminMenu
                 "Hide the player and item actions unless you are the host. The game accepts them from any client; turn this on if you only want to use them in your own games.", null,
                 new ConfigurationManagerAttributes { DispName = "Host-only actions", Order = 20 }));
 
+            GodMode = Config.Bind("Cheats", "GodMode", false, new ConfigDescription(
+                "Keep your health topped up and block incoming damage. As a client, damage is applied by the host, so this heals you back instead of preventing the hit.", null,
+                new ConfigurationManagerAttributes { DispName = "God mode", Order = 30 }));
+            InfiniteStamina = Config.Bind("Cheats", "InfiniteStamina", false, new ConfigDescription(
+                "Never run out of stamina when sprinting, climbing or blocking.", null,
+                new ConfigurationManagerAttributes { DispName = "Infinite stamina", Order = 20 }));
+            SuperPickaxe = Config.Bind("Cheats", "SuperPickaxe", false, new ConfigDescription(
+                "Multiply dig strength, digging speed and the heavy dig bonus.", null,
+                new ConfigurationManagerAttributes { DispName = "Super pickaxe", Order = 10 }));
+            SuperPickaxeMultiplier = Config.Bind("Cheats", "SuperPickaxeMultiplier", 5f, new ConfigDescription(
+                "How much stronger the super pickaxe is. 1 is the unmodified game.",
+                new AcceptableValueRange<float>(1f, 25f),
+                new ConfigurationManagerAttributes { DispName = "Super pickaxe strength", Order = 5 }));
+
             _harmony = new Harmony(PluginGuid);
             _harmony.PatchAll(typeof(Plugin).Assembly);
 
@@ -54,6 +72,9 @@ namespace AdminMenu
             var inGame = GameManager.Instance != null;
             if (Hotkey.WasPressed(ToggleKey.Value) && MenuGate.CanToggle(Enabled.Value, inGame, state, AdminMenuController.IsOpen))
                 AdminMenuController.Toggle();
+
+            if (Enabled.Value)
+                Cheats.Update();
         }
 
         /// <summary>Maps the game's input state onto the handful of cases the menu gate distinguishes.</summary>
