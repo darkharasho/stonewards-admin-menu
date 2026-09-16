@@ -35,10 +35,11 @@ namespace AdminMenu
             }
 
             var stats = player.PlayerStats;
-            if (GodModeActive && !stats.isDead && stats.GetCurrentHealth() < stats.MaxHealth.Value
+            var maxHealth = PlayerActions.MaxHealthOf(stats);
+            if (GodModeActive && !stats.isDead && stats.GetCurrentHealth() < maxHealth
                 && Time.unscaledTime >= _nextHealTime)
             {
-                stats.CmdUpdateHealth(stats.MaxHealth.Value - stats.GetCurrentHealth());
+                stats.CmdUpdateHealth(maxHealth - stats.GetCurrentHealth());
                 _nextHealTime = Time.unscaledTime + HealIntervalSeconds;
             }
 

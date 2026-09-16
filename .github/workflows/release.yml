@@ -52,6 +52,10 @@ jobs:
           fi
 
       # Skips versions already on Thunderstore, so re-pushing a tag is safe.
+      # The very first publish of this package has no existing Thunderstore listing to read
+      # categories from, so scripts/thunderstore-publish.sh exits 1 here until either
+      # --categories <slugs> is added to the run below for that one tag, or the listing is
+      # created on thunderstore.io first.
       - name: Publish to Thunderstore
         env:
           THUNDERSTORE_TOKEN: ${{ secrets.THUNDERSTORE_TOKEN }}

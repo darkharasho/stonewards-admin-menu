@@ -38,10 +38,10 @@ dotnet build "$root/src/AdminMenu/AdminMenu.csproj" -c Release
 
 rm -rf "$stage" "$zipfile"
 mkdir -p "$stage"
-cp "$manifest" "$root/thunderstore/icon.png" "$root/README.md" "$stage/"
+cp "$manifest" "$root/thunderstore/icon.png" "$root/README.md" "$root/CHANGELOG.md" "$stage/"
 cp "$root/src/AdminMenu/bin/Release/AdminMenu.dll" "$stage/"
 
-(cd "$stage" && zip -qrX "$zipfile" manifest.json icon.png README.md AdminMenu.dll)
+(cd "$stage" && zip -qrX "$zipfile" manifest.json icon.png README.md CHANGELOG.md AdminMenu.dll)
 rm -rf "$stage"
 unzip -l "$zipfile"
 echo "Package: $zipfile"

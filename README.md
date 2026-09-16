@@ -47,3 +47,5 @@ Requires the .NET SDK, Stonewards, and an r2modman profile with BepInExPack 5.4.
 ### Releases
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`. It checks the tag matches `thunderstore/manifest.json`, runs `scripts/package.sh`, creates a GitHub release with the zip and that version's changelog entry, and publishes the zip to Thunderstore with `scripts/thunderstore-publish.sh` (using the `THUNDERSTORE_TOKEN` repo secret; versions already on Thunderstore are skipped). Bump the version in the manifest, `Plugin.cs`, the `.csproj` and `CHANGELOG.md` first, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
+
+The very first Thunderstore publish has no existing listing to read categories from, so that one tag push needs `--categories <slugs>` added to the workflow's publish step (or the listing created on thunderstore.io first).

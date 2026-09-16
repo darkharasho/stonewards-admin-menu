@@ -3,7 +3,7 @@
 # game and BepInEx assemblies, so CI can build without the game installed.
 # Needs the refasmer tool: dotnet tool install -g JetBrains.Refasmer.CliTool
 # The installed apphost targets net6.0; on machines without a net6.0 runtime this script
-# falls back to running the tool's dll directly with `dotnet ... --roll-forward Major`.
+# falls back to running the tool's dll directly with `DOTNET_ROLL_FORWARD=Major dotnet ...`.
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -17,11 +17,14 @@ game_dlls=(Assembly-CSharp Mirror Unity.InputSystem UnityEngine UnityEngine.Core
     UnityEngine.UIElementsModule)
 bepinex_dlls=(BepInEx 0Harmony)
 
-# Resolve a working refasmer invocation: prefer the PATH apphost, and fall back to running the
-# tool's net6.0 dll directly (with roll-forward) when the apphost's target runtime isn't installed.
+# Resolve a working refasmer invocation into the refasmer_cmd array: prefer the PATH apphost,
+# and fall back to running the tool's net6.0 dll directly (with roll-forward) when the apphost's
+# target runtime isn't installed. Assigns the global array directly rather than going through
+# `$(...)` + word-splitting, so a failure here actually exits the script (not just a subshell)
+# and a tool path containing spaces still works.
 resolve_refasmer() {
     if command -v refasmer >/dev/null 2>&1 && refasmer --help >/dev/null 2>&1; then
-        echo "refasmer"
+        refasmer_cmd=(refasmer)
         return
     fi
     local dll
@@ -31,10 +34,11 @@ resolve_refasmer() {
         echo "refasmer not found. Install with: dotnet tool install -g JetBrains.Refasmer.CliTool" >&2
         exit 1
     fi
-    echo "env DOTNET_ROLL_FORWARD=Major dotnet $dll"
+    refasmer_cmd=(env DOTNET_ROLL_FORWARD=Major dotnet "$dll")
 }
 
-read -r -a refasmer_cmd <<<"$(resolve_refasmer)"
+refasmer_cmd=()
+resolve_refasmer
 
 rm -rf "$out"
 mkdir -p "$out"
