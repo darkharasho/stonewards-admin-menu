@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- Fix: reviving a player whose body someone is carrying now drops the body first, instead of leaving it stuck invisible in the carrier's hands.
+- The Bring button's tooltip now says why it's unavailable, and the log notes whether the host runs the admin menu.
+
 ## 0.1.0
 
 First release.

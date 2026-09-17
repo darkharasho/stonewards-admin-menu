@@ -20,6 +20,7 @@ namespace AdminMenu
         private const string AdminsKey = "darkharasho.adminmenu.admins";
 
         private static bool _trustedClient;
+        private static bool? _hostHadMod;
         private static float _nextLobbyCheck;
 
         /// <summary>Whether this peer may use the menu's actions and cheats.</summary>
@@ -38,6 +39,7 @@ namespace AdminMenu
             if (lobby.m_SteamID == 0)
             {
                 _trustedClient = false;
+                _hostHadMod = null;
                 return;
             }
 
@@ -53,7 +55,16 @@ namespace AdminMenu
                 return;
             }
 
-            var list = HostHasMod() ? Parse(SteamMatchmaking.GetLobbyData(lobby, AdminsKey)) : TrustedIds();
+            var hostHasMod = HostHasMod();
+            if (hostHasMod != _hostHadMod)
+            {
+                var owner = SteamMatchmaking.GetLobbyOwner(lobby);
+                Plugin.Log.LogInfo($"Host {owner.m_SteamID} (connected to {NetworkManager.singleton?.networkAddress}) "
+                    + (hostHasMod ? "runs the admin menu; host-side actions go through it" : "doesn't run the admin menu (no lobby flag); Bring and stats are unavailable"));
+                _hostHadMod = hostHasMod;
+            }
+
+            var list = hostHasMod ? Parse(SteamMatchmaking.GetLobbyData(lobby, AdminsKey)) : TrustedIds();
             var trusted = list.Contains(self.m_SteamID);
             if (trusted != _trustedClient)
                 Plugin.Log.LogInfo(trusted ? "Trusted admin in this lobby" : "Not a trusted admin in this lobby; the menu is host-only");

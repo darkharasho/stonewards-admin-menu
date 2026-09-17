@@ -147,8 +147,6 @@ namespace AdminMenu
             var kill = AddButton(row, "Kill", () => PlayerActions.Kill(player));
             var goTo = AddButton(row, "Go to", () => PlayerActions.TeleportTo(player));
             var bring = AddButton(row, "Bring", () => PlayerActions.Bring(player));
-            if (!PlayerActions.CanBring)
-                bring.tooltip = "Only the host, or a trusted admin when the host has the admin menu, can move other players.";
 
             var statsPanel = BuildStatsPanel(player, out var updateStats);
             statsPanel.style.display = DisplayStyle.None;
@@ -186,6 +184,9 @@ namespace AdminMenu
                 kill.SetEnabled(allowed && !stats.isDead);
                 goTo.SetEnabled(Plugin.Enabled.Value && !isSelf);
                 bring.SetEnabled(allowed && PlayerActions.CanBring && !isSelf);
+                bring.tooltip = PlayerActions.CanBring ? "" : !allowed
+                    ? "Only the host and trusted admins can move other players."
+                    : "The host needs the admin menu installed for you to move other players.";
                 statsToggle.SetEnabled(allowed);
                 if (statsPanel.style.display == DisplayStyle.Flex)
                     updateStats();

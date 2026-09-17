@@ -82,10 +82,31 @@ namespace AdminMenu
         {
             if (!ActionsAllowed || player == null || player.PlayerStats == null || !player.PlayerStats.isDead)
                 return;
+            // A carried body has its model and collider switched off until it's dropped, and the carrier keeps
+            // holding it, so drop it first the way the revive shrine does. The Commands run in order on the host.
+            var position = player.transform.position;
+            var carrier = CarrierOf(player);
+            if (carrier != null)
+            {
+                position = carrier.transform.position + carrier.transform.forward;
+                carrier.CmdReleaseDeadPlayer(carrier, player, position);
+                carrier.PlayerEquipment.CmdSetCarriedDeadPlayer(null, null);
+            }
             // The revive tool restores health and plays the game's own revive flow; ForceIsDead alone would
             // clear the flag but leave the player at zero health.
-            player.CmdUseReviveTool(player, player.transform.position, 1f);
+            player.CmdUseReviveTool(player, position, 1f);
             Plugin.Log.LogInfo($"Revived {player.playerName}");
+        }
+
+        /// <summary>The player carrying <paramref name="deadPlayer"/>'s body, or null.</summary>
+        private static FirstPersonController CarrierOf(FirstPersonController deadPlayer)
+        {
+            if (deadPlayer.PlayerCarryHandler == null || !deadPlayer.PlayerCarryHandler.IsCarried)
+                return null;
+            foreach (var other in Players())
+                if (other != null && other.PlayerEquipment != null && other.PlayerEquipment.DeadPlayerCarried == deadPlayer)
+                    return other;
+            return null;
         }
 
         public static void Heal(FirstPersonController player)

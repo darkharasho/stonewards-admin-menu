@@ -1,6 +1,6 @@
 {
     "name": "AdminMenu",
-    "version_number": "0.1.0",
+    "version_number": "0.1.1",
     "website_url": "https://github.com/darkharasho/stonewards-admin-menu",
     "description": "In-game admin menu on F1: revive, kill, teleport and edit stats of players, spawn items, chests and resources, god mode, infinite stamina and ammo, super pickaxes.",
     "dependencies": [
