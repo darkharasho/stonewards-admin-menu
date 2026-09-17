@@ -8,7 +8,16 @@ namespace AdminMenu
     /// </summary>
     internal static class Cheats
     {
-        public const string ModifierSource = "AdminMenu.SuperPickaxe";
+        public const string StrengthSource = "AdminMenu.SuperPickaxe";
+        public const string SpeedSource = "AdminMenu.SuperSpeedPickaxe";
+
+        // CharacterStat.CalculateFinalValue applies PERCENT_MULT as `num3 *= 1f + mod.Value`, so the modifier
+        // value is the percentage to add, not the factor: x25 is 24f. StatModifier is immutable, so the same
+        // instance is re-added every frame while the cheat is on (see ApplyPickaxe).
+        private const float StrengthMultiplier = 25f;
+        public const float SpeedMultiplier = 3f;
+        private static readonly StatModifier StrengthModifier =
+            new StatModifier(StrengthMultiplier - 1f, StatModType.PERCENT_MULT, StrengthSource);
 
         // CmdUpdateHealth's argument is a delta, not an absolute (PlayerStats.ServerUpdateHealth), so sending
         // it every frame while under max health re-sends the full remaining deficit before the previous send
@@ -16,20 +25,18 @@ namespace AdminMenu
         // client. Throttling to this interval keeps god mode responsive without spamming the Command.
         private const float HealIntervalSeconds = 0.25f;
 
-        private static bool _pickaxeApplied;
-        private static float _appliedMultiplier;
+        private static bool _strengthApplied;
+        private static bool _speedApplied;
         private static float _nextHealTime;
-
-        // Rebuilt only when the configured multiplier changes: StatModifier is immutable, and the same
-        // instance is re-added every frame while the cheat is on (see ApplyPickaxe).
-        private static StatModifier _pickaxeModifier;
 
         // Every cheat is gated on Enabled as well as its own toggle. Cheats.Update itself runs unconditionally
         // (see Plugin.Update) so that turning the mod off still reaches the removal branch below and cleans up
-        // an applied pickaxe modifier — gating the call instead would strand it until a restart.
-        public static bool GodModeActive => Plugin.Enabled.Value && Plugin.GodMode.Value;
-        public static bool InfiniteStaminaActive => Plugin.Enabled.Value && Plugin.InfiniteStamina.Value;
-        private static bool SuperPickaxeActive => Plugin.Enabled.Value && Plugin.SuperPickaxe.Value;
+        // applied pickaxe modifiers — gating the call instead would strand them until a restart.
+        public static bool GodModeActive => Plugin.Enabled.Value && Access.Allowed && Plugin.GodMode.Value;
+        public static bool InfiniteStaminaActive => Plugin.Enabled.Value && Access.Allowed && Plugin.InfiniteStamina.Value;
+        public static bool InfiniteAmmoActive => Plugin.Enabled.Value && Access.Allowed && Plugin.InfiniteAmmo.Value;
+        private static bool SuperPickaxeActive => Plugin.Enabled.Value && Access.Allowed && Plugin.SuperPickaxe.Value;
+        public static bool SuperSpeedPickaxeActive => Plugin.Enabled.Value && Access.Allowed && Plugin.SuperSpeedPickaxe.Value;
 
         /// <summary>Called every frame from <see cref="Plugin.Update"/>.</summary>
         public static void Update()
@@ -37,7 +44,8 @@ namespace AdminMenu
             var player = PlayerActions.LocalPlayer();
             if (player == null || player.PlayerStats == null)
             {
-                _pickaxeApplied = false;
+                _strengthApplied = false;
+                _speedApplied = false;
                 return;
             }
 
@@ -54,11 +62,12 @@ namespace AdminMenu
         }
 
         /// <summary>
-        /// Adds or removes the dig modifiers. <see cref="CharacterStat.AddOrReplaceModifier"/> and
-        /// <see cref="CharacterStat.RemoveAllModifiersFromSource"/> are idempotent, so both run unconditionally
-        /// every frame based only on <c>wanted</c> rather than a one-shot transition: the stats are rebuilt
-        /// when the archetype changes, which would silently drop a modifier applied only once on toggle.
-        /// <c>_pickaxeApplied</c> is kept purely to gate the "on"/"off" log line to real transitions.
+        /// Adds or removes the super pickaxe's modifiers on dig strength and the heavy dig bonus, and pushes
+        /// the super speed pickaxe's speed to the tool when it's toggled. <see cref="CharacterStat.AddOrReplaceModifier"/>
+        /// and <see cref="CharacterStat.RemoveAllModifiersFromSource"/> are idempotent, so both run
+        /// unconditionally every frame based only on whether the cheat is wanted rather than a one-shot
+        /// transition: the stats are rebuilt when the archetype changes, which would silently drop a modifier
+        /// applied only once on toggle. The <c>_applied</c> flags only gate the "on"/"off" log lines.
         /// </summary>
         public static void ApplyPickaxe(FirstPersonController player)
         {
@@ -71,37 +80,35 @@ namespace AdminMenu
             if (stats.DigStrength == null || stats.DiggingSpeed == null || stats.HeavyDigMultiplier == null)
                 return;
 
-            var wanted = SuperPickaxeActive;
-            var multiplier = Mathf.Max(1f, Plugin.SuperPickaxeMultiplier.Value);
-
-            if (wanted)
+            Apply(SuperPickaxeActive, StrengthModifier, StrengthSource, ref _strengthApplied, $"Super pickaxe (x{StrengthMultiplier} strength)",
+                stats.DigStrength, stats.HeavyDigMultiplier);
+            // Digging speed isn't read from the local stat: the host computes it into the syncDiggingSpeed SyncVar,
+            // and the pickaxe copies that into its animator's speed. A local modifier did nothing on a client,
+            // so the speed is scaled where the pickaxe applies it (Patches.DigSpeedPatch). Re-raising the synced
+            // value on toggle makes the equipped pickaxe re-apply it right away.
+            stats.DiggingSpeed.RemoveAllModifiersFromSource(SpeedSource);
+            var speedWanted = SuperSpeedPickaxeActive;
+            if (speedWanted != _speedApplied)
             {
-                // CharacterStat.CalculateFinalValue applies PERCENT_MULT as `num3 *= 1f + mod.Value`, so the
-                // modifier value is a percentage to add, not a factor: to get a "x multiplier" we pass
-                // (multiplier - 1f), not multiplier itself.
-                if (_pickaxeModifier == null || !Mathf.Approximately(multiplier, _appliedMultiplier))
-                    _pickaxeModifier = new StatModifier(multiplier - 1f, StatModType.PERCENT_MULT, ModifierSource);
-
-                var mod = _pickaxeModifier;
-                stats.DigStrength.AddOrReplaceModifier(mod);
-                stats.DiggingSpeed.AddOrReplaceModifier(mod);
-                stats.HeavyDigMultiplier.AddOrReplaceModifier(mod);
-
-                if (!_pickaxeApplied || !Mathf.Approximately(multiplier, _appliedMultiplier))
-                    Plugin.Log.LogInfo($"Super pickaxe on at x{multiplier}");
-                _pickaxeApplied = true;
-                _appliedMultiplier = multiplier;
+                Plugin.Log.LogInfo($"Super speed pickaxe (x{SpeedMultiplier} speed) {(speedWanted ? "on" : "off")}");
+                _speedApplied = speedWanted;
+                stats.OnDiggingSpeedChanged?.Invoke(stats.syncDiggingSpeed);
             }
-            else
+        }
+
+        private static void Apply(bool wanted, StatModifier mod, string source, ref bool applied, string logName, params CharacterStat[] targets)
+        {
+            foreach (var stat in targets)
             {
-                stats.DigStrength.RemoveAllModifiersFromSource(ModifierSource);
-                stats.DiggingSpeed.RemoveAllModifiersFromSource(ModifierSource);
-                stats.HeavyDigMultiplier.RemoveAllModifiersFromSource(ModifierSource);
-
-                if (_pickaxeApplied)
-                    Plugin.Log.LogInfo("Super pickaxe off");
-                _pickaxeApplied = false;
+                if (wanted)
+                    stat.AddOrReplaceModifier(mod);
+                else
+                    stat.RemoveAllModifiersFromSource(source);
             }
+
+            if (wanted != applied)
+                Plugin.Log.LogInfo($"{logName} {(wanted ? "on" : "off")}");
+            applied = wanted;
         }
     }
 }

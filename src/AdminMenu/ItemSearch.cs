@@ -12,6 +12,8 @@ namespace AdminMenu
         public string Rarity;
         public bool Stackable;
         public int MaxStack = 1;
+        /// <summary>Something digging drops or scrap refines into, shown again on the Resources tab.</summary>
+        public bool IsResource;
     }
 
     /// <summary>

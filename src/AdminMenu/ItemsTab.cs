@@ -1,20 +1,26 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UIElements;
 
 namespace AdminMenu
 {
     /// <summary>
-    /// Items tab: a searchable, spawnable item catalog. The result list is rebuilt from scratch on every
+    /// Items tab: a searchable, spawnable item catalog, each row with its own amount. The Resources tab reuses
+    /// it with a filter. The result list is rebuilt from scratch on every
     /// keystroke, so each row is styled as it's created rather than by re-running <see cref="Theme.StyleControls"/>
     /// over the whole scroll view (see <see cref="PlayersTab"/> for the same pattern).
     /// </summary>
     internal static class ItemsTab
     {
         private const int MaxResults = 200;
+        private const int MaxAmount = 999;
 
-        public static VisualElement Build(out Action refresh)
+        public static VisualElement Build(out Action refresh) => Build(null, out refresh);
+
+        /// <param name="include">Optional filter applied before the search; null shows every item.</param>
+        public static VisualElement Build(Func<ItemEntry, bool> include, out Action refresh)
         {
             var all = new List<ItemEntry>();
 
@@ -45,27 +51,12 @@ namespace AdminMenu
             placeholder.pickingMode = PickingMode.Ignore;
             searchContainer.Add(placeholder);
 
-            var count = new IntegerField("Count") { value = 1 };
-            count.style.width = 70f;
-            count.style.marginRight = 12f;
-            toolbar.Add(count);
-
             var toInventory = new Toggle("Spawn into inventory") { value = true };
             toolbar.Add(toInventory);
 
             var scrollView = new ScrollView();
             scrollView.style.flexGrow = 1f;
             root.Add(scrollView);
-
-            int ClampedCount()
-            {
-                var value = count.value;
-                if (value < 1) value = 1;
-                if (value > 999) value = 999;
-                if (count.value != value)
-                    count.value = value;
-                return value;
-            }
 
             void RenderResults()
             {
@@ -90,7 +81,10 @@ namespace AdminMenu
                         scrollView.Add(truncated);
                         break;
                     }
-                    scrollView.Add(BuildRow(item, ClampedCount, toInventory));
+                    var row = BuildRow(item, toInventory);
+                    // Rows are new elements, so styling them once here cannot stack hover callbacks.
+                    Theme.StyleControls(row);
+                    scrollView.Add(row);
                     shown++;
                 }
             }
@@ -104,7 +98,7 @@ namespace AdminMenu
             void Refresh()
             {
                 all.Clear();
-                all.AddRange(ItemCatalog.All());
+                all.AddRange(include == null ? ItemCatalog.All() : ItemCatalog.All().Where(include));
                 RenderResults();
             }
 
@@ -112,7 +106,7 @@ namespace AdminMenu
             return root;
         }
 
-        private static VisualElement BuildRow(ItemEntry item, Func<int> clampedCount, Toggle toInventory)
+        private static VisualElement BuildRow(ItemEntry item, Toggle toInventory)
         {
             var row = new VisualElement { name = "ItemRow" };
             row.style.flexDirection = FlexDirection.Row;
@@ -136,6 +130,7 @@ namespace AdminMenu
             name.style.color = Theme.Text;
             name.style.unityFontStyleAndWeight = FontStyle.Bold;
             name.style.width = 220f;
+            name.style.flexGrow = 1f;
             row.Add(name);
 
             var rarity = new Label(item.Rarity);
@@ -143,16 +138,22 @@ namespace AdminMenu
             rarity.style.width = 100f;
             row.Add(rarity);
 
+            var times = new Label("x");
+            times.style.color = Theme.Muted;
+            times.style.marginRight = 4f;
+            row.Add(times);
+
+            var amount = new IntegerField { value = 1 };
+            amount.style.width = 60f;
+            amount.style.marginRight = 12f;
+            row.Add(amount);
+
             var spawn = new Button(() =>
             {
-                // ItemDataSO.maxStackSize is [ConditionalField("isStackable", false)], so it is only
-                // meaningful for stackable items; anything else spawns one at a time.
-                var count = clampedCount();
-                count = item.Stackable ? Mathf.Min(count, item.MaxStack) : 1;
-                if (toInventory.value)
-                    ItemCatalog.SpawnToInventory(item, count);
-                else
-                    ItemCatalog.SpawnToGround(item, count);
+                var count = Mathf.Clamp(amount.value, 1, MaxAmount);
+                if (amount.value != count)
+                    amount.value = count;
+                ItemCatalog.Spawn(item, count, toInventory.value);
             }) { text = "Spawn" };
             Theme.StyleButton(spawn);
             spawn.SetEnabled(PlayerActions.ActionsAllowed);

@@ -12,6 +12,11 @@ namespace AdminMenu
         private static Hud _attachedHud;
         private static InputManager.InputState _stateBeforeOpen;
 
+        // Set when Close found a game menu (say the end-of-wave vote) had opened over the admin menu. That menu
+        // remembers GeneralMenu as the state to return to, so when it closes it hands back our state with
+        // nothing on screen: no movement, no HUD counters, and F1 refuses to open from GeneralMenu.
+        private static bool _owesRestore;
+
         /// <summary>
         /// The root having no panel means the HUD document we were attached to has been destroyed — a scene
         /// load with the menu open. Without that check the menu stays "logically open" while invisible, and
@@ -51,7 +56,30 @@ namespace AdminMenu
                 return;
             _panel.Close();
             if (InputManager.Instance != null)
-                RestoreInputState(InputManager.Instance);
+                _owesRestore = !RestoreInputState(InputManager.Instance);
+        }
+
+        /// <summary>Called every frame from <see cref="Plugin.Update"/>; pays back a skipped restore once the game drops into our state.</summary>
+        public static void Update()
+        {
+            if (!_owesRestore || IsOpen)
+                return;
+            var input = InputManager.Instance;
+            if (input == null || GameManager.Instance == null)
+            {
+                _owesRestore = false;
+                return;
+            }
+            var state = input.CurrentInputState;
+            if (state == InputManager.InputState.GeneralMenu)
+            {
+                _owesRestore = !RestoreInputState(input);
+                Plugin.Log.LogInfo("Restored input left in GeneralMenu by a menu that opened over the admin menu");
+            }
+            else if (state == InputManager.InputState.Gameplay || state == InputManager.InputState.Dead)
+            {
+                _owesRestore = false;
+            }
         }
 
         /// <summary>
@@ -60,17 +88,19 @@ namespace AdminMenu
         /// that would strand the player with no input. The remembered state is sanity-checked for the same
         /// reason, since anything the menu could not have been opened from is not safe to return to.
         /// </summary>
-        private static void RestoreInputState(InputManager input)
+        /// <returns>False if the state was not ours to restore.</returns>
+        private static bool RestoreInputState(InputManager input)
         {
             if (input.CurrentInputState != InputManager.InputState.GeneralMenu)
-                return;
+                return false;
 
-            var restore = _stateBeforeOpen;
-            if (restore != InputManager.InputState.Gameplay
-                && restore != InputManager.InputState.Inventory
-                && restore != InputManager.InputState.Dead)
-                restore = InputManager.InputState.Gameplay;
+            // The inventory screen closes itself when the admin menu takes input, so going back to the
+            // Inventory state would leave inventory input live with no inventory on screen.
+            var restore = _stateBeforeOpen == InputManager.InputState.Dead
+                ? InputManager.InputState.Dead
+                : InputManager.InputState.Gameplay;
             input.SetState(restore);
+            return true;
         }
 
         /// <summary>
@@ -98,6 +128,9 @@ namespace AdminMenu
 
                 var items = ItemsTab.Build(out var refreshItems);
                 _panel.AddTab("Items", items, refreshItems);
+
+                var resources = ResourcesTab.Build(out var refreshResources);
+                _panel.AddTab("Resources", resources, refreshResources);
 
                 var cheats = CheatsTab.Build(out var refreshCheats);
                 _panel.AddTab("Cheats", cheats, refreshCheats);

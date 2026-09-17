@@ -4,9 +4,10 @@ A BepInEx plugin for Stonewards that adds an in-game admin/cheat menu, following
 
 ## Features
 
-- **Players tab** — revive, heal, or kill any connected player.
-- **Items tab** — search and browse the item catalog and spawn any item.
-- **Cheats tab** — toggle god mode, infinite stamina, and a super pickaxe with an adjustable strength multiplier.
+- **Players tab** — revive, heal, or kill any connected player, teleport to them, or (as host) bring them to you. Health and alive/dead status update live. **Stats** opens a per-player editor for every stat level-up rings raise, showing each current value and letting you set it. **Go to campfire** takes you to the level's campfire.
+- **Items tab** — search and browse the item catalog and spawn any item, with an amount next to each one.
+- **Resources tab** — add meta currency to your save, spawn any kind of treasure chest in front of you, and spawn dug-up resources and scrap.
+- **Cheats tab** — toggle god mode, infinite stamina, infinite arrows & bombs, a super pickaxe (25x dig strength) and a super speed pickaxe (3x digging speed).
 - A themed, tabbed panel matching the game's own menus, not a raw debug list.
 
 ## Opening the menu
@@ -20,17 +21,22 @@ Settings are stored in `BepInEx/config/com.darkharasho.stonewards.adminmenu.cfg`
 | Section | Key | Default | Description |
 | --- | --- | --- | --- |
 | `General` | `Enabled` | `true` | Allow the admin menu to be opened. |
-| `General` | `RequireHost` | `false` | Hide the player and item actions unless you are the host. |
+| `General` | `TrustedAdmins` | the mod author's Steam ID | Steam IDs, comma-separated, that may use the admin menu in games you host. Everyone else only gets it as host. Clear it to remove the author. |
 | `Controls` | `ToggleKey` | `F1` | Key that opens and closes the admin menu. |
 | `Controls` | `CloseOnEscape` | `true` | Also close the admin menu with Escape, instead of opening the pause menu. |
 | `Cheats` | `GodMode` | `false` | Keep your health topped up and block incoming damage. |
 | `Cheats` | `InfiniteStamina` | `false` | Never run out of stamina when sprinting, climbing or blocking. |
-| `Cheats` | `SuperPickaxe` | `false` | Multiply dig strength, digging speed and the heavy dig bonus. |
-| `Cheats` | `SuperPickaxeMultiplier` | `5` | How much stronger the super pickaxe is (1–25). 1 is the unmodified game. |
+| `Cheats` | `InfiniteAmmo` | `false` | Arrows, ballista bolts, bombs and other throwables are never used up. You need at least one to start with. |
+| `Cheats` | `SuperPickaxe` | `false` | Dig with 25x strength, including the heavy dig bonus. |
+| `Cheats` | `SuperSpeedPickaxe` | `false` | Dig 3x faster. |
 
 ## Multiplayer notes
 
-Player actions (revive, kill) are declared as Mirror `Command`s with `requiresAuthority = false`, so they work from the host and from a plain client alike. Set `RequireHost` to `true` if you'd rather these actions were hidden unless you're hosting.
+The admin menu is host-only. The exception is players whose Steam IDs are listed in `TrustedAdmins`, which by default holds the mod author (darkharasho). When the host runs this mod, the host's list decides and is shared with the lobby, and a trusted client's host-only actions (Bring, stat changes) are carried out by the host. When the host doesn't run it, the joining player's own list decides, and only the actions the game already accepts from clients work.
+
+Positions are owned by each player's own client, so **Go to** works for anyone but **Bring** needs the host, either you or a host running this mod.
+
+Stat changes have to reach both the host and the player they're for, since the host decides health, defense and damage while each player's own game decides movement, digging and attack speed. The admin menu sends them itself, so for full effect both of those need the admin menu installed. As a client you can only edit stats when the host has it.
 
 Damage in Stonewards is decided on the server. As a result, **god mode blocks hits outright when you're the host**, but on a plain client it works by healing you back up immediately after you're hit, since the client can't veto damage the host has already applied.
 
@@ -47,5 +53,3 @@ Requires the .NET SDK, Stonewards, and an r2modman profile with BepInExPack 5.4.
 ### Releases
 
 Pushing a `v*` tag runs `.github/workflows/release.yml`. It checks the tag matches `thunderstore/manifest.json`, runs `scripts/package.sh`, creates a GitHub release with the zip and that version's changelog entry, and publishes the zip to Thunderstore with `scripts/thunderstore-publish.sh` (using the `THUNDERSTORE_TOKEN` repo secret; versions already on Thunderstore are skipped). Bump the version in the manifest, `Plugin.cs`, the `.csproj` and `CHANGELOG.md` first, then `git tag vX.Y.Z && git push origin vX.Y.Z`.
-
-The very first Thunderstore publish has no existing listing to read categories from, so that one tag push needs `--categories <slugs>` added to the workflow's publish step (or the listing created on thunderstore.io first).

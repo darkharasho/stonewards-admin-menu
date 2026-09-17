@@ -5,14 +5,45 @@ using UnityEngine;
 
 namespace AdminMenu
 {
+    /// <summary>A trusted client asking the host to bring a player to the sender.</summary>
+    internal struct BringRequestMessage : NetworkMessage
+    {
+        public uint NetId;
+    }
+
     /// <summary>
-    /// Player admin actions. Every call goes through a game Command marked
-    /// <c>requiresAuthority = false</c>, so they work from the host and from a plain client alike.
+    /// Player admin actions. Most go through a game Command marked <c>requiresAuthority = false</c>, so they work
+    /// from the host and from a client alike; Bring needs the host.
     /// </summary>
     internal static class PlayerActions
     {
-        /// <summary>Host-only mode is a user choice, not a technical limit; the game accepts these from any client.</summary>
-        public static bool ActionsAllowed => !Plugin.RequireHost.Value || NetworkServer.active;
+        /// <summary>
+        /// Host-only, except for trusted admins (see <see cref="Access"/>). This is the mod's own rule, not a technical
+        /// limit: the game accepts these Commands from any client.
+        /// </summary>
+        public static bool ActionsAllowed => Plugin.Enabled.Value && Access.Allowed;
+
+        private static bool _bringHandler;
+
+        static PlayerActions()
+        {
+            Writer<BringRequestMessage>.write = (writer, message) => writer.WriteUInt(message.NetId);
+            Reader<BringRequestMessage>.read = reader => new BringRequestMessage { NetId = reader.ReadUInt() };
+        }
+
+        public static void Update()
+        {
+            // Mirror drops every handler when the server shuts down, so register again after each start.
+            if (NetworkServer.active && !_bringHandler)
+            {
+                NetworkServer.ReplaceHandler<BringRequestMessage>(OnBringRequest);
+                _bringHandler = true;
+            }
+            else if (!NetworkServer.active)
+            {
+                _bringHandler = false;
+            }
+        }
 
         public static List<FirstPersonController> Players() =>
             FirstPersonController.LocalPlayers
@@ -66,13 +97,109 @@ namespace AdminMenu
             Plugin.Log.LogInfo($"Healed {player.playerName}");
         }
 
+        /// <summary>Moves the local player to <paramref name="target"/>. Players own their own position, so this needs no host.</summary>
+        public static void TeleportTo(FirstPersonController target)
+        {
+            var self = LocalPlayer();
+            if (target == null || target == self)
+                return;
+            if (MoveSelf(target.transform.position - target.transform.forward * 1.5f))
+                Plugin.Log.LogInfo($"Teleported to {target.playerName}");
+        }
+
+        /// <summary>The level's campfire, or null outside a level (e.g. in the hub).</summary>
+        public static CampFire Campfire() => LevelManager.Instance != null ? LevelManager.Instance.CampFire : null;
+
         /// <summary>
-        /// <see cref="PlayerStats.MaxHealth"/> is only populated by <c>InitCharacterStats</c>, which a plain
-        /// client never runs for remote players (their <c>OnStartClient</c> path just calls
-        /// <c>SetPlayer</c>), so it is null there. <see cref="PlayerStats.NetworksyncMaxHealth"/> is the
-        /// synced value the game itself falls back to in that situation.
+        /// Moves the local player to the campfire. Picking a spot beside the fire by raycasting could start the
+        /// ray inside the cave rock and drop you under the map, so this uses the level's player spawn, the
+        /// same point the game's own "unstuck" button moves you to, when it's near the fire.
         /// </summary>
-        public static float MaxHealthOf(PlayerStats stats) =>
-            stats.MaxHealth != null ? stats.MaxHealth.Value : stats.NetworksyncMaxHealth;
+        public static void TeleportToCampfire()
+        {
+            var campfire = Campfire();
+            if (campfire == null)
+                return;
+            var spawn = GameManager.Instance != null ? GameManager.Instance.playerSpawn : null;
+            Vector3 position;
+            if (spawn != null && Vector3.Distance(spawn.position, campfire.transform.position) <= CampfireSpawnRange)
+                position = spawn.position;
+            else if (Physics.Raycast(campfire.transform.position + Vector3.up * 1.5f, Vector3.down, out var hit, 5f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                position = hit.point + Vector3.up * 0.5f;
+            else
+                position = campfire.transform.position + Vector3.up * 1f;
+            if (MoveSelf(position))
+                Plugin.Log.LogInfo($"Teleported to the campfire ({(spawn != null && position == spawn.position ? "player spawn" : "fire")})");
+        }
+
+        private const float CampfireSpawnRange = 40f;
+
+        private static bool MoveSelf(Vector3 position)
+        {
+            var self = LocalPlayer();
+            if (!Plugin.Enabled.Value || self == null)
+                return false;
+            // Same dance the game does for ladders: a live CharacterController overwrites a moved transform.
+            var controller = self.Controller;
+            if (controller != null) controller.enabled = false;
+            self.transform.position = position;
+            if (controller != null) controller.enabled = true;
+            if (self.SmoothSyncMirror != null)
+            {
+                self.SmoothSyncMirror.clearBuffer();
+                self.SmoothSyncMirror.teleportOwnedObjectFromOwner();
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Pulls <paramref name="target"/> to the local player. Positions are owner-authoritative through
+        /// SmoothSync, and only the server can tell another client to move (the RPC behind
+        /// <c>teleportAnyObjectFromServer</c>), so a client can only do this by asking a host that runs this mod.
+        /// </summary>
+        public static bool CanBring => NetworkServer.active || Access.RoutesThroughHost;
+
+        public static void Bring(FirstPersonController target)
+        {
+            var self = LocalPlayer();
+            if (!CanBring || !ActionsAllowed || self == null || target == null || target == self)
+                return;
+            if (NetworkServer.active)
+                BringTo(target, self);
+            else
+                NetworkClient.Send(new BringRequestMessage { NetId = target.netId });
+            Plugin.Log.LogInfo($"Brought {target.playerName}");
+        }
+
+        private static void OnBringRequest(NetworkConnectionToClient sender, BringRequestMessage message)
+        {
+            if (!Access.IsTrusted(sender))
+            {
+                Plugin.Log.LogWarning($"Ignored a bring request from untrusted connection {sender.address}");
+                return;
+            }
+            var requester = Players().FirstOrDefault(p => p.connectionToClient == sender);
+            var target = Players().FirstOrDefault(p => p.netId == message.NetId);
+            if (requester == null || target == null || target == requester)
+                return;
+            BringTo(target, requester);
+            Plugin.Log.LogInfo($"{requester.playerName} brought {target.playerName}");
+        }
+
+        private static void BringTo(FirstPersonController target, FirstPersonController destination)
+        {
+            if (target.SmoothSyncMirror == null)
+                return;
+            var position = destination.transform.position + destination.transform.forward * 1.5f;
+            target.SmoothSyncMirror.teleportAnyObjectFromServer(position, target.transform.rotation, target.transform.localScale);
+        }
+
+        /// <summary>
+        /// The health cap the server actually clamps to. <see cref="PlayerStats.ServerUpdateHealth"/> clamps to
+        /// the synced <see cref="PlayerStats.NetworksyncMaxHealth"/>, and on a plain client the local
+        /// <see cref="PlayerStats.MaxHealth"/> stat never sees upgrades applied on the server — reading it would
+        /// heal only up to base health.
+        /// </summary>
+        public static float MaxHealthOf(PlayerStats stats) => stats.NetworksyncMaxHealth;
     }
 }

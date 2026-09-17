@@ -6,10 +6,9 @@ using UnityEngine.UIElements;
 namespace AdminMenu
 {
     /// <summary>
-    /// Cheats tab: a column of toggles, one per cheat, plus a strength slider for the super pickaxe. All
-    /// controls are built once here; <c>refresh</c> only ever updates values on the elements built at that
-    /// time (toggle values, the slider's display, live labels), so nothing needs restyling on show — see
-    /// <see cref="AdminMenuPanel.AddTab"/> for why restyling more than once would leak hover callbacks.
+    /// Cheats tab: a column of toggles, one per cheat. All controls are built once here; <c>refresh</c> only
+    /// ever updates toggle values, so nothing needs restyling on show — see <see cref="AdminMenuPanel.AddTab"/>
+    /// for why restyling more than once would leak hover callbacks.
     /// </summary>
     internal static class CheatsTab
     {
@@ -17,62 +16,19 @@ namespace AdminMenu
         {
             var root = new VisualElement();
 
-            var pickaxeMultiplierRow = default(VisualElement);
-            var multiplierValueLabel = default(Label);
-            var multiplierSlider = default(Slider);
-
-            var superPickaxeToggle = BuildRow(root, "Super pickaxe", Plugin.SuperPickaxe,
-                onExtra: row =>
-                {
-                    pickaxeMultiplierRow = new VisualElement { name = "SuperPickaxeMultiplierRow" };
-                    pickaxeMultiplierRow.style.flexDirection = FlexDirection.Row;
-                    pickaxeMultiplierRow.style.alignItems = Align.Center;
-                    pickaxeMultiplierRow.style.marginLeft = 24f;
-                    pickaxeMultiplierRow.style.marginBottom = 18f;
-
-                    var label = new Label("Strength");
-                    label.style.color = Theme.Muted;
-                    label.style.width = 100f;
-                    pickaxeMultiplierRow.Add(label);
-
-                    multiplierSlider = new Slider(1f, 25f) { value = Plugin.SuperPickaxeMultiplier.Value };
-                    multiplierSlider.style.flexGrow = 1f;
-                    multiplierSlider.style.marginRight = 12f;
-                    pickaxeMultiplierRow.Add(multiplierSlider);
-
-                    multiplierValueLabel = new Label();
-                    multiplierValueLabel.style.color = Theme.Text;
-                    multiplierValueLabel.style.width = 50f;
-                    pickaxeMultiplierRow.Add(multiplierValueLabel);
-
-                    // ConfigFile.SaveOnConfigSet defaults to true, so writing to the config entry on every
-                    // ValueChanged (which fires continuously while dragging) would rewrite the whole .cfg
-                    // dozens of times per second. Only the label tracks the drag; the entry is committed once
-                    // the drag ends (pointer released) or, for a keyboard-driven change, when focus leaves.
-                    multiplierSlider.RegisterValueChangedCallback(evt =>
-                        multiplierValueLabel.text = $"x{evt.newValue:0.0}");
-                    multiplierSlider.RegisterCallback<PointerUpEvent>(_ =>
-                        Plugin.SuperPickaxeMultiplier.Value = multiplierSlider.value);
-                    multiplierSlider.RegisterCallback<FocusOutEvent>(_ =>
-                        Plugin.SuperPickaxeMultiplier.Value = multiplierSlider.value);
-
-                    root.Add(pickaxeMultiplierRow);
-                });
+            var superPickaxeToggle = BuildRow(root, "Super pickaxe", Plugin.SuperPickaxe);
+            var superSpeedPickaxeToggle = BuildRow(root, "Super speed pickaxe", Plugin.SuperSpeedPickaxe);
             var infiniteStaminaToggle = BuildRow(root, "Infinite stamina", Plugin.InfiniteStamina);
+            var infiniteAmmoToggle = BuildRow(root, "Infinite arrows & bombs", Plugin.InfiniteAmmo);
             var godModeToggle = BuildRow(root, "God mode", Plugin.GodMode);
 
             void Refresh()
             {
                 superPickaxeToggle.value = Plugin.SuperPickaxe.Value;
+                superSpeedPickaxeToggle.value = Plugin.SuperSpeedPickaxe.Value;
                 infiniteStaminaToggle.value = Plugin.InfiniteStamina.Value;
+                infiniteAmmoToggle.value = Plugin.InfiniteAmmo.Value;
                 godModeToggle.value = Plugin.GodMode.Value;
-                if (multiplierSlider != null)
-                {
-                    multiplierSlider.value = Plugin.SuperPickaxeMultiplier.Value;
-                    multiplierValueLabel.text = $"x{Plugin.SuperPickaxeMultiplier.Value:0.0}";
-                }
-                if (pickaxeMultiplierRow != null)
-                    pickaxeMultiplierRow.style.display = Plugin.SuperPickaxe.Value ? DisplayStyle.Flex : DisplayStyle.None;
             }
 
             refresh = Refresh;
@@ -81,10 +37,9 @@ namespace AdminMenu
 
         /// <summary>
         /// One cheat row: bold name, a muted description pulled from the config entry, and a toggle bound
-        /// to it. <paramref name="onExtra"/> lets the super pickaxe row append its strength slider directly
-        /// below itself, in build order, without a second pass over the tree.
+        /// to it.
         /// </summary>
-        private static Toggle BuildRow(VisualElement root, string title, ConfigEntry<bool> entry, Action<VisualElement> onExtra = null)
+        private static Toggle BuildRow(VisualElement root, string title, ConfigEntry<bool> entry)
         {
             var row = new VisualElement { name = "CheatRow" };
             row.style.flexDirection = FlexDirection.Row;
@@ -113,7 +68,6 @@ namespace AdminMenu
             row.Add(toggle);
 
             root.Add(row);
-            onExtra?.Invoke(row);
 
             return toggle;
         }

@@ -24,6 +24,7 @@ namespace AdminMenu
                 return new List<ItemEntry>();
             }
 
+            var resourceIds = ResourceIds(database.items);
             var entries = new List<ItemEntry>();
             foreach (var item in database.items.Where(i => i != null && !string.IsNullOrEmpty(i.itemID)))
             {
@@ -37,9 +38,55 @@ namespace AdminMenu
                     Rarity = item.Rarity.ToString(),
                     Stackable = item.isStackable,
                     MaxStack = Mathf.Max(1, item.maxStackSize),
+                    IsResource = resourceIds.Contains(item.itemID),
                 });
             }
             return entries;
+        }
+
+        /// <summary>
+        /// The game has no "resource" flag, so this collects what it treats as one: whatever a dig profile can
+        /// drop (<c>DigMatterProfileSO.resourceClusters</c>, private, and only loaded in a level), scrap items and
+        /// what they refine into, and the rewards the exchange hands out. The item-side flags work in the hub
+        /// too, where no dig profile is loaded.
+        /// </summary>
+        private static HashSet<string> ResourceIds(List<ItemDataSO> items)
+        {
+            var ids = new HashSet<string>();
+            void Add(ItemDataSO item)
+            {
+                if (item != null && !string.IsNullOrEmpty(item.itemID))
+                    ids.Add(item.itemID);
+            }
+            void AddRewards(ExchangeResourceList list)
+            {
+                if (list?.items == null) return;
+                foreach (var reward in list.items)
+                    Add(reward.item);
+            }
+
+            foreach (var item in items)
+            {
+                if (item == null) continue;
+                if (item.isScrapItem)
+                {
+                    Add(item);
+                    Add(item.itemProduced);
+                }
+                if (item.canBeExchanged)
+                {
+                    AddRewards(item.level1ExchangeRewards);
+                    AddRewards(item.level2ExchangeRewards);
+                }
+            }
+
+            foreach (var profile in Resources.FindObjectsOfTypeAll<DigMatterProfileSO>())
+            {
+                if (Traverse.Create(profile).Field("resourceClusters").GetValue() is System.Collections.IEnumerable clusters)
+                    foreach (var cluster in clusters)
+                        Add(Traverse.Create(cluster).Field<ItemDataSO>("resourceCluster").Value);
+            }
+            return ids;
         }
 
         /// <summary>The item's icon sprite, or null if the item hasn't been seen by <see cref="All"/> yet.</summary>
@@ -50,16 +97,62 @@ namespace AdminMenu
             return item.itemIcon;
         }
 
-        public static void SpawnToInventory(ItemEntry item, int count)
+        /// <summary>
+        /// Spawns <paramref name="count"/> of an item, split into stacks the game can hold: stackable items go
+        /// out in <see cref="ItemEntry.MaxStack"/>-sized chunks and everything else one at a time.
+        /// </summary>
+        public static void Spawn(ItemEntry item, int count, bool toInventory)
+        {
+            if (item == null || count < 1)
+                return;
+            var stack = item.Stackable ? item.MaxStack : 1;
+            for (var left = count; left > 0; left -= stack)
+            {
+                var chunk = Mathf.Min(left, stack);
+                if (toInventory)
+                    SpawnToInventory(item, chunk);
+                else
+                    SpawnToGround(item, chunk);
+            }
+            Plugin.Log.LogInfo($"Spawned {count}x {item.Id} {(toInventory ? "into the inventory" : "on the ground")}");
+        }
+
+        /// <summary>The chests the item database knows, commonest first. Empty until the hub or a level has loaded.</summary>
+        public static List<ChestDataSO> Chests()
+        {
+            var manager = ItemManager.Instance;
+            var database = manager == null ? null : Traverse.Create(manager).Field<ItemDatabaseSO>("itemDataBase").Value;
+            if (database == null || database.carriables == null)
+                return new List<ChestDataSO>();
+            return database.carriables.OfType<ChestDataSO>()
+                .Where(c => c != null && !string.IsNullOrEmpty(c.Id))
+                .OrderBy(c => c.Rarity)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Spawns a chest in front of you, the same way a player drops one. It can be carried to the chest NPC
+        /// and opened like any other. The Command doesn't need authority, so this works from a client.
+        /// </summary>
+        public static void SpawnChest(ChestDataSO chest)
+        {
+            var player = PlayerActions.LocalPlayer();
+            if (chest == null || player == null || ItemManager.Instance == null || !PlayerActions.ActionsAllowed)
+                return;
+            var position = player.transform.position + player.transform.forward * 2f + Vector3.up;
+            ItemManager.Instance.CmdInstantiateCarriableObject(chest.Id, position);
+            Plugin.Log.LogInfo($"Spawned chest {chest.Id}");
+        }
+
+        private static void SpawnToInventory(ItemEntry item, int count)
         {
             var player = PlayerActions.LocalPlayer();
             if (item == null || player == null || !PlayerActions.ActionsAllowed)
                 return;
             player.CmdForcePickupItem(player, count, item.Id);
-            Plugin.Log.LogInfo($"Spawned {count}x {item.Id} into the inventory");
         }
 
-        public static void SpawnToGround(ItemEntry item, int count)
+        private static void SpawnToGround(ItemEntry item, int count)
         {
             var player = PlayerActions.LocalPlayer();
             if (item == null || player == null || ItemManager.Instance == null || !PlayerActions.ActionsAllowed)
@@ -67,7 +160,6 @@ namespace AdminMenu
             // A step in front of the player, at their feet, so the drop never lands inside a wall.
             var position = player.transform.position + player.transform.forward * 1.5f;
             ItemManager.Instance.CmdInstantiatePickableNewItem(item.Id, count, position);
-            Plugin.Log.LogInfo($"Spawned {count}x {item.Id} on the ground");
         }
     }
 }
