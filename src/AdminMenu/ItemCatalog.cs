@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
@@ -128,6 +129,42 @@ namespace AdminMenu
                 .Where(c => c != null && !string.IsNullOrEmpty(c.Id))
                 .OrderBy(c => c.Rarity)
                 .ToList();
+        }
+
+        /// <summary>
+        /// The chest's name with its rarity in front, e.g. "Rare Treasure chest", since chests of different rarities
+        /// share a name. Uses the game's own rarity word, falling back to the enum when it isn't localized yet.
+        /// </summary>
+        public static string ChestLabel(ChestDataSO chest)
+        {
+            var name = chest.GetLocalizedName();
+            if (string.IsNullOrEmpty(name))
+                name = chest.Id;
+            string rarity = null;
+            try
+            {
+                rarity = ItemDataSO.GetRarityLocalizedString(chest.Rarity);
+            }
+            catch (Exception)
+            {
+                // Localization isn't loaded; use the enum name below.
+            }
+            if (string.IsNullOrEmpty(rarity) || rarity.StartsWith("RARITY_"))
+                rarity = chest.Rarity.ToString().Substring(0, 1) + chest.Rarity.ToString().Substring(1).ToLowerInvariant();
+            return name.IndexOf(rarity, StringComparison.OrdinalIgnoreCase) >= 0 ? name : $"{rarity} {name}";
+        }
+
+        /// <summary>The colour the game tags each rarity with (silver, green, cyan, magenta, orange), toned for the menu.</summary>
+        public static Color RarityColor(Rarity rarity)
+        {
+            switch (rarity)
+            {
+                case Rarity.UNCOMMON: return new Color(0.49f, 0.85f, 0.42f);
+                case Rarity.RARE: return new Color(0.36f, 0.85f, 0.92f);
+                case Rarity.EPIC: return new Color(0.87f, 0.45f, 0.93f);
+                case Rarity.LEGENDARY: return new Color(1f, 0.65f, 0.25f);
+                default: return new Color(0.8f, 0.8f, 0.82f);
+            }
         }
 
         /// <summary>

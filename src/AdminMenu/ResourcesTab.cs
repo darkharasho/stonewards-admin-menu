@@ -91,13 +91,13 @@ namespace AdminMenu
                 foreach (var chest in chests)
                 {
                     var data = chest;
-                    var name = data.GetLocalizedName();
                     var button = new Button(() => ItemCatalog.SpawnChest(data))
                     {
-                        text = string.IsNullOrEmpty(name) ? data.Id : name,
-                        tooltip = $"{data.Rarity}. Spawns in front of you; carry it to the chest NPC to open it.",
+                        text = ItemCatalog.ChestLabel(data),
+                        tooltip = "Spawns in front of you; carry it to the chest NPC to open it.",
                     };
                     Theme.StyleButton(button);
+                    button.style.color = ItemCatalog.RarityColor(data.Rarity);
                     button.style.marginRight = 8f;
                     button.style.marginBottom = 4f;
                     button.SetEnabled(PlayerActions.ActionsAllowed && PlayerActions.LocalPlayer() != null);

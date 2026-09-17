@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.3
+
+- Chest buttons on the Resources tab now show their rarity in the name (e.g. "Rare Treasure chest") and are coloured by rarity, so chests that share a name can be told apart.
+
 ## 0.1.2
 
 - Fix: the super speed pickaxe, and digging, melee attack and magic speeds set in the stats editor, no longer drop back to normal after switching items; the speed is put back whenever it's lost.
