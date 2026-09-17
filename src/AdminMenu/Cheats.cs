@@ -85,7 +85,7 @@ namespace AdminMenu
             // Digging speed isn't read from the local stat: the host computes it into the syncDiggingSpeed SyncVar,
             // and the pickaxe copies that into its animator's speed. A local modifier did nothing on a client,
             // so the speed is scaled where the pickaxe applies it (Patches.DigSpeedPatch). Re-raising the synced
-            // value on toggle makes the equipped pickaxe re-apply it right away.
+            // value on toggle makes the equipped pickaxe re-apply it right away, and WeaponSpeed keeps it there.
             stats.DiggingSpeed.RemoveAllModifiersFromSource(SpeedSource);
             var speedWanted = SuperSpeedPickaxeActive;
             if (speedWanted != _speedApplied)

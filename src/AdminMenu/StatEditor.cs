@@ -46,6 +46,12 @@ namespace AdminMenu
         // Stats this peer has overridden, keyed by the stat object so a respawned player starts clean.
         private static readonly HashSet<CharacterStat> Applied = new HashSet<CharacterStat>();
 
+        // The values set this level, by player netId then stat name. Changing class rebuilds every stat object
+        // and drops the modifiers, so these are put back when a stat turns up without one.
+        private static readonly Dictionary<uint, Dictionary<string, float>> Targets = new Dictionary<uint, Dictionary<string, float>>();
+        private const float ReapplyIntervalSeconds = 0.5f;
+        private static float _nextReapply;
+
         private static bool _serverHandler;
         private static bool _clientHandler;
 
@@ -151,9 +157,44 @@ namespace AdminMenu
         {
             RegisterHandlers();
 
-            // Forget stat objects whose player left or respawned.
-            if (Applied.Count > 0 && GameManager.Instance == null)
+            // Values last until the level ends; the next level spawns every player afresh.
+            if (GameManager.Instance == null)
+            {
                 Applied.Clear();
+                Targets.Clear();
+                return;
+            }
+            if (Targets.Count > 0 && Time.unscaledTime >= _nextReapply)
+            {
+                _nextReapply = Time.unscaledTime + ReapplyIntervalSeconds;
+                Reapply();
+            }
+        }
+
+        private static void Reapply()
+        {
+            List<KeyValuePair<FirstPersonController, KeyValuePair<string, float>>> lost = null;
+            foreach (var player in PlayerActions.Players())
+            {
+                if (!Targets.TryGetValue(player.netId, out var values))
+                    continue;
+                foreach (var entry in values)
+                {
+                    var stat = Get(player.PlayerStats, entry.Key);
+                    if (stat == null || Applied.Contains(stat))
+                        continue;
+                    if (lost == null)
+                        lost = new List<KeyValuePair<FirstPersonController, KeyValuePair<string, float>>>();
+                    lost.Add(new KeyValuePair<FirstPersonController, KeyValuePair<string, float>>(player, entry));
+                }
+            }
+            if (lost == null)
+                return;
+            foreach (var item in lost)
+            {
+                ApplyLocal(item.Key, item.Value.Key, item.Value.Value);
+                Plugin.Log.LogInfo($"Re-applied {item.Key.playerName}'s {Label(item.Value.Key)} ({item.Value.Value}) after their stats were rebuilt");
+            }
         }
 
         private static void RegisterHandlers()
@@ -225,6 +266,8 @@ namespace AdminMenu
 
             stat.RemoveAllModifiersFromSource(Source);
             Applied.Remove(stat);
+            Targets.TryGetValue(player.netId, out var values);
+            values?.Remove(statName);
             if (!float.IsNaN(value))
             {
                 // Final value = (base + flat) * multipliers, so a flat modifier of f moves it by f * multipliers.
@@ -238,6 +281,9 @@ namespace AdminMenu
                 }
                 stat.AddModifier(new StatModifier((value / Scale(stat) - without) / perPoint, StatModType.FLAT, Source));
                 Applied.Add(stat);
+                if (values == null)
+                    Targets[player.netId] = values = new Dictionary<string, float>();
+                values[statName] = value;
             }
 
             // The host copies these into SyncVars only when told to, and the game reads the SyncVars, not the stats.

@@ -12,7 +12,7 @@ bepinex="${PROFILE_PATH:-$HOME/.config/r2modmanPlus-local/Stonewards/profiles/De
 out="$root/lib/refs"
 
 # Keep in sync with the <Reference> items in src/AdminMenu/AdminMenu.csproj.
-game_dlls=(Assembly-CSharp Mirror com.rlabrecque.steamworks.net Unity.InputSystem UnityEngine UnityEngine.CoreModule
+game_dlls=(Assembly-CSharp Mirror com.rlabrecque.steamworks.net Unity.InputSystem UnityEngine UnityEngine.AnimationModule UnityEngine.CoreModule
     UnityEngine.InputLegacyModule UnityEngine.PhysicsModule UnityEngine.TextRenderingModule
     UnityEngine.UIElementsModule)
 bepinex_dlls=(BepInEx 0Harmony)

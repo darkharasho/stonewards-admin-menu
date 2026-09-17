@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.1";
+        public const string PluginVersion = "0.1.2";
 
         /// <summary>The mod author's Steam ID, the default for <see cref="TrustedAdmins"/>.</summary>
         private const string AuthorSteamId = "76561197987892075";
@@ -90,6 +90,7 @@ namespace AdminMenu
             // Deliberately ungated: each cheat obeys exactly its own config toggle. Gating this on Enabled
             // would strand an applied super-pickaxe modifier, because the removal branch would stop running.
             Cheats.Update();
+            WeaponSpeed.Update();
             AdminMenuController.Update();
             try
             {

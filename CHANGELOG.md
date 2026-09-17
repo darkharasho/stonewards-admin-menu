@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Fix: the super speed pickaxe, and digging, melee attack and magic speeds set in the stats editor, no longer drop back to normal after switching items; the speed is put back whenever it's lost.
+- Fix: stats set in the stats editor now survive a class change instead of silently resetting. They still reset when a new level starts.
+
 ## 0.1.1
 
 - Fix: reviving a player whose body someone is carrying now drops the body first, instead of leaving it stuck invisible in the carrier's hands.
