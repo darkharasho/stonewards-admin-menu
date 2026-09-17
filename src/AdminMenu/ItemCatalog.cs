@@ -27,8 +27,14 @@ namespace AdminMenu
 
             var resourceIds = ResourceIds(database.items);
             var entries = new List<ItemEntry>();
-            foreach (var item in database.items.Where(i => i != null && !string.IsNullOrEmpty(i.itemID)))
+            // Scrap (the "Wood" pieces dug out of barrels and crates) only exists as a pickup: the game turns it
+            // into the item it produces when picked up, so a scrap item put straight into the inventory can't be
+            // dropped. Its produced item is listed on its own. Several scrap assets also share an itemID, and the
+            // game only ever resolves an ID to the first match, so later duplicates are skipped too.
+            foreach (var item in database.items.Where(i => i != null && !string.IsNullOrEmpty(i.itemID) && !i.isScrapItem))
             {
+                if (ById.ContainsKey(item.itemID))
+                    continue;
                 ById[item.itemID] = item;
                 // A LocalizationSettings.StringDatabase lookup; resolve it once per item, not twice.
                 var localizedName = item.GetLocalizedName();

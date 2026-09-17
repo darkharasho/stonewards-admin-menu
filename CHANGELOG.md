@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.4
+
+- Fix: the item list no longer shows the game's scrap wood pieces (the many "Wood" entries). Spawned into the inventory they couldn't be dropped; the wood they turn into is still listed.
+
 ## 0.1.3
 
 - Chest buttons on the Resources tab now show their rarity in the name (e.g. "Rare Treasure chest") and are coloured by rarity, so chests that share a name can be told apart.
