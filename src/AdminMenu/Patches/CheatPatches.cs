@@ -48,16 +48,19 @@ namespace AdminMenu.Patches
     /// is clamped separately below. <c>ServerRestoreDeath</c> does too, but it is scripted death rather than
     /// damage, so god mode deliberately does not veto it.
     ///
-    /// The method is <c>[Server]</c>, so this only bites when you are the host. As a client, god mode falls
-    /// back to the heal-up in <see cref="Cheats.Update"/>.
+    /// The method is <c>[Server]</c>, so this runs on the host -- for the host's own player and, when a
+    /// client has asked for it through <see cref="GodModeGuard"/>, for that client too. Damage is vetoed before
+    /// the death check on line 1217 of the game's method sees the reduced health, which is the only place it
+    /// can be stopped: clamping health and setting <c>isDead</c> happen in the same call. Against a host that
+    /// doesn't run this mod, nothing here runs and god mode falls back to the heal-up in
+    /// <see cref="Cheats.Update"/>.
     /// </summary>
     [HarmonyPatch(typeof(PlayerStats), nameof(PlayerStats.ServerUpdateHealth))]
     internal static class ServerUpdateHealthPatch
     {
         private static void Prefix(PlayerStats __instance, ref float _Amount)
         {
-            if (_Amount < 0f && Cheats.GodModeActive
-                && __instance != null && __instance.Player != null && __instance.Player.isLocalPlayer)
+            if (ProtectedPlayers.BlocksDamage(_Amount, GodModeGuard.ShouldProtect(__instance)))
                 _Amount = 0f;
         }
     }
@@ -71,8 +74,7 @@ namespace AdminMenu.Patches
     {
         private static void Prefix(PlayerStats __instance, ref float _Percentage)
         {
-            if (_Percentage < 0f && Cheats.GodModeActive
-                && __instance != null && __instance.Player != null && __instance.Player.isLocalPlayer)
+            if (ProtectedPlayers.BlocksDamage(_Percentage, GodModeGuard.ShouldProtect(__instance)))
                 _Percentage = 0f;
         }
     }

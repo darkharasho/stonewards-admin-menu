@@ -13,6 +13,7 @@
     <Compile Include="../../src/AdminMenu/ItemSearch.cs" Link="ItemSearch.cs" />
     <Compile Include="../../src/AdminMenu/SpotSearch.cs" Link="SpotSearch.cs" />
     <Compile Include="../../src/AdminMenu/TrustList.cs" Link="TrustList.cs" />
+    <Compile Include="../../src/AdminMenu/ProtectedPlayers.cs" Link="ProtectedPlayers.cs" />
   </ItemGroup>
 
   <ItemGroup>

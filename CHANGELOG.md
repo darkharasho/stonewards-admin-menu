@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.8
+
+- Fix: god mode no longer lets a client be killed by a heavy burst of damage, such as a volley of strong projectiles. The game clamps health and sets the death flag in the same server-side call, so a client noticing its health drop and healing back afterwards was always too late — the host had already marked it dead. Anything that covered the whole health bar before the next heal was lethal. A client now tells the host when its god mode is on and the host vetoes the damage itself, before the death check sees it, exactly as it already did for its own player. Trusted admins only, and the host stops protecting a player within a couple of seconds of their admin being revoked.
+- Against a host that doesn't run this mod, nothing can veto damage on your behalf, so god mode there is still the heal-up fallback and a big enough burst still kills. The README and the config description now say so instead of implying it always holds.
+
 ## 0.1.7
 
 - The mod author is now always a trusted admin on every install, rather than only being the default value of `TrustedAdmins`. Holding the grant in the config meant it was lost by accident whenever a host added their own friends to the list, since that replaces the value. It is compiled in instead and can't be removed through the config; the README's new **Mod author access** section says so plainly, the config description repeats it, and the plugin logs it on startup. The mod is open source, so building it without the `OwnerSteamId` constant removes the grant.

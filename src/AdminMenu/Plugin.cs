@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.7";
+        public const string PluginVersion = "0.1.8";
 
         /// <summary>
         /// The mod author's Steam ID (darkharasho). Always treated as a trusted admin, in addition to whoever
@@ -60,7 +60,7 @@ namespace AdminMenu
                 new ConfigurationManagerAttributes { DispName = "Trusted admins (Steam IDs)", Order = 20 }));
 
             GodMode = Config.Bind("Cheats", "GodMode", false, new ConfigDescription(
-                "Keep your health topped up and block incoming damage. As a client, damage is applied by the host, so this heals you back instead of preventing the hit.", null,
+                "Keep your health topped up and block incoming damage. As a client, the host blocks the hits for you when it runs this mod; against a host that doesn't, this can only heal you back afterwards, so a big enough burst still kills.", null,
                 new ConfigurationManagerAttributes { DispName = "God mode", Order = 30 }));
             InfiniteStamina = Config.Bind("Cheats", "InfiniteStamina", false, new ConfigDescription(
                 "Never run out of stamina when sprinting, climbing or blocking.", null,
@@ -106,6 +106,7 @@ namespace AdminMenu
             {
                 Access.Update();
                 PlayerActions.Update();
+                GodModeGuard.Update();
                 StatEditor.Update();
             }
             catch (Exception e)

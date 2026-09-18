@@ -53,7 +53,9 @@ Positions are owned by each player's own client, so **Go to** works for anyone b
 
 Stat changes have to reach both the host and the player they're for, since the host decides health, defense and damage while each player's own game decides movement, digging and attack speed. The admin menu sends them itself, so for full effect both of those need the admin menu installed. As a client you can only edit stats when the host has it.
 
-Damage in Stonewards is decided on the server. As a result, **god mode blocks hits outright when you're the host**, but on a plain client it works by healing you back up immediately after you're hit, since the client can't veto damage the host has already applied.
+Damage in Stonewards is decided on the server, and the game clamps health and marks you dead in the same call — so god mode only really works where it can veto the hit before that happens. **As host, it blocks hits outright.** As a trusted client on a host running this mod, your game asks the host to hold god mode for you and the host blocks the hits on your behalf, which works the same way.
+
+**On a host that doesn't run this mod, god mode is a fallback that heals you back up after each hit**, because nothing on your machine can veto damage the host has already applied. That survives ordinary chip damage, but a burst big enough to cover your whole health bar between heals — a volley of strong projectiles, say — still kills you, and nothing installed only on your side can prevent it.
 
 ## Development
 
