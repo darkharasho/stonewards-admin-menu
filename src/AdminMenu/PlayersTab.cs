@@ -147,6 +147,10 @@ namespace AdminMenu
             var kill = AddButton(row, "Kill", () => PlayerActions.Kill(player));
             var goTo = AddButton(row, "Go to", () => PlayerActions.TeleportTo(player));
             var bring = AddButton(row, "Bring", () => PlayerActions.Bring(player));
+            // Host-only, and only for players running the mod: elevating someone with no menu to unlock
+            // would do nothing. Hidden entirely off the host rather than shown disabled, since a client can
+            // never grant and a permanently dead button just raises questions.
+            var elevate = AddButton(row, "Elevate", () => Access.SetGranted(player, !Access.IsGranted(player)));
 
             var statsPanel = BuildStatsPanel(player, out var updateStats);
             statsPanel.style.display = DisplayStyle.None;
@@ -187,6 +191,21 @@ namespace AdminMenu
                 bring.tooltip = PlayerActions.CanBring ? "" : !allowed
                     ? "Only the host and trusted admins can move other players."
                     : "The host needs the admin menu installed for you to move other players.";
+                var canGrant = Access.CanGrant && !isSelf;
+                elevate.style.display = canGrant ? DisplayStyle.Flex : DisplayStyle.None;
+                if (canGrant)
+                {
+                    var granted = Access.IsGranted(player);
+                    var hasMod = Access.HasMod(player);
+                    elevate.text = granted ? "Revoke" : "Elevate";
+                    elevate.SetEnabled(Plugin.Enabled.Value && hasMod);
+                    elevate.tooltip = !hasMod
+                        ? "This player needs the admin menu installed before you can give them admin."
+                        : granted
+                            ? "Take back admin for this player. Lasts for this session only."
+                            : "Give this player the admin menu for this session. Not saved to your config.";
+                }
+
                 statsToggle.SetEnabled(allowed);
                 if (statsPanel.style.display == DisplayStyle.Flex)
                     updateStats();

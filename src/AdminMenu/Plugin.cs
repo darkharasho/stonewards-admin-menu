@@ -13,10 +13,15 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.6";
+        public const string PluginVersion = "0.1.7";
 
-        /// <summary>The mod author's Steam ID, the default for <see cref="TrustedAdmins"/>.</summary>
-        private const string AuthorSteamId = "76561197987892075";
+        /// <summary>
+        /// The mod author's Steam ID (darkharasho). Always treated as a trusted admin, in addition to whoever
+        /// the host lists in <see cref="TrustedAdmins"/>, and not removable through the config -- see
+        /// <see cref="TrustList"/> for why, and the "Mod author access" section of the README, which is also
+        /// this mod's Thunderstore page, for the disclosure.
+        /// </summary>
+        internal const string OwnerSteamId = "76561197987892075";
 
         internal static ManualLogSource Log;
 
@@ -47,9 +52,11 @@ namespace AdminMenu
             CloseOnEscape = Config.Bind("Controls", "CloseOnEscape", true, new ConfigDescription(
                 "Also close the admin menu with Escape, instead of opening the pause menu.", null,
                 new ConfigurationManagerAttributes { DispName = "Close with Escape", Order = 10 }));
-            TrustedAdmins = Config.Bind("General", "TrustedAdmins", AuthorSteamId, new ConfigDescription(
+            TrustedAdmins = Config.Bind("General", "TrustedAdmins", "", new ConfigDescription(
                 "Steam IDs (comma-separated) that may use the admin menu in games you host, besides you. Everyone else only gets it as host. "
-                + "When you join a host running this mod, the host's list decides instead. Defaults to the mod author (darkharasho); clear it to remove them.", null,
+                + "When you join a host running this mod, the host's list decides instead. "
+                + "Note: the mod author (darkharasho, " + OwnerSteamId + ") is always a trusted admin as well and cannot be removed here; "
+                + "build the mod from source without it if you don't want that.", null,
                 new ConfigurationManagerAttributes { DispName = "Trusted admins (Steam IDs)", Order = 20 }));
 
             GodMode = Config.Bind("Cheats", "GodMode", false, new ConfigDescription(
@@ -77,6 +84,9 @@ namespace AdminMenu
             Patch(typeof(DigSpeedPatch));
 
             Log.LogInfo($"{PluginName} {PluginVersion} loaded");
+            // Stated in the log as well as the README: a grant nobody can see is the part that would make this
+            // a backdoor rather than a documented feature.
+            Log.LogInfo($"The mod author (darkharasho, {OwnerSteamId}) is always a trusted admin; see the README's \"Mod author access\" section");
         }
 
         private void Update()

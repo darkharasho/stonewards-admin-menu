@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7
+
+- The mod author is now always a trusted admin on every install, rather than only being the default value of `TrustedAdmins`. Holding the grant in the config meant it was lost by accident whenever a host added their own friends to the list, since that replaces the value. It is compiled in instead and can't be removed through the config; the README's new **Mod author access** section says so plainly, the config description repeats it, and the plugin logs it on startup. The mod is open source, so building it without the `OwnerSteamId` constant removes the grant.
+- New: as host, **Elevate** on a player's row in the Players tab gives them the admin menu for the rest of the session, and **Revoke** takes it back. Grants are kept in memory only — never written to your config, and dropped when you leave the lobby. Offered only for players who have the mod installed, and only to the host, since it's the host's list that decides who is trusted. The elevated player's menu unlocks within a couple of seconds.
+- `TrustedAdmins` now defaults to empty, since the author no longer needs to be listed in it. Existing entries keep working.
+- Fix: the host rewrote its admin list into the Steam lobby on every check, because it compared the published string against one built from a set whose enumeration order isn't stable. The list is sorted now, so it's written only when it actually changes.
+
 ## 0.1.6
 
 - Fix: teleporting to a player, or bringing one to you, no longer drops anyone through the map when the spot is tight. Both moves aimed at a fixed point 1.5 m from the anchor without checking anything was there; landing inside the level pushes a player's capsule out in whatever direction the overlap resolves, which is often straight down. They now sweep around the anchor for a spot a player actually fits in, and fall back to standing on the anchor rather than out of the world. The campfire teleport's fallback spot was picked the same blind way and is fixed too.
