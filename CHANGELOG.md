@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- Fix: teleporting to a player, or bringing one to you, no longer drops anyone through the map when the spot is tight. Both moves aimed at a fixed point 1.5 m from the anchor without checking anything was there; landing inside the level pushes a player's capsule out in whatever direction the overlap resolves, which is often straight down. They now sweep around the anchor for a spot a player actually fits in, and fall back to standing on the anchor rather than out of the world. The campfire teleport's fallback spot was picked the same blind way and is fixed too.
+
 ## 0.1.5
 
 - Fix: reviving yourself from the menu while dead no longer leaves you unable to move. Closing the menu handed input back to the game's dead state because that's where the menu was opened from; it now picks the state that matches whether you're actually alive, so killing yourself from the menu behaves too.

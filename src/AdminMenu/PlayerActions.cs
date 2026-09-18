@@ -122,9 +122,12 @@ namespace AdminMenu
         public static void TeleportTo(FirstPersonController target)
         {
             var self = LocalPlayer();
-            if (target == null || target == self)
+            // Without a local player there is nothing to measure a player capsule with, let alone move.
+            if (self == null || target == null || target == self)
                 return;
-            if (MoveSelf(target.transform.position - target.transform.forward * 1.5f))
+            // Behind the target, or the nearest clear spot to that: the old fixed offset dropped you inside
+            // whatever the target had their back to.
+            if (MoveSelf(SpotNear(target.transform.position, -target.transform.forward, self)))
                 Plugin.Log.LogInfo($"Teleported to {target.playerName}");
         }
 
@@ -132,9 +135,9 @@ namespace AdminMenu
         public static CampFire Campfire() => LevelManager.Instance != null ? LevelManager.Instance.CampFire : null;
 
         /// <summary>
-        /// Moves the local player to the campfire. Picking a spot beside the fire by raycasting could start the
-        /// ray inside the cave rock and drop you under the map, so this uses the level's player spawn, the
-        /// same point the game's own "unstuck" button moves you to, when it's near the fire.
+        /// Moves the local player to the campfire. Prefers the level's player spawn, the same point the game's
+        /// own "unstuck" button moves you to, when it's near the fire: it is known to be clear, where a spot
+        /// beside the fire has to be searched for and the fire can be built into the cave rock.
         /// </summary>
         public static void TeleportToCampfire()
         {
@@ -143,10 +146,13 @@ namespace AdminMenu
                 return;
             var spawn = GameManager.Instance != null ? GameManager.Instance.playerSpawn : null;
             Vector3 position;
+            var self = LocalPlayer();
             if (spawn != null && Vector3.Distance(spawn.position, campfire.transform.position) <= CampfireSpawnRange)
                 position = spawn.position;
-            else if (Physics.Raycast(campfire.transform.position + Vector3.up * 1.5f, Vector3.down, out var hit, 5f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
-                position = hit.point + Vector3.up * 0.5f;
+            else if (self != null)
+                // Beside the fire, wherever a player fits. Offsetting up from the floor by hand put the capsule's
+                // centre half a metre up, which is a player's feet below the floor and a push out through the map.
+                position = SpotNear(campfire.transform.position, campfire.transform.forward, self);
             else
                 position = campfire.transform.position + Vector3.up * 1f;
             if (MoveSelf(position))
@@ -211,8 +217,105 @@ namespace AdminMenu
         {
             if (target.SmoothSyncMirror == null)
                 return;
-            var position = destination.transform.position + destination.transform.forward * 1.5f;
+            // In front of the requester, or the nearest clear spot to that. SmoothSync assigns the position
+            // straight onto the target's live CharacterController, so a spot inside the level ejects the capsule
+            // in whatever direction the overlap resolves -- routinely downward, out of the world.
+            var position = SpotNear(destination.transform.position, destination.transform.forward, target);
             target.SmoothSyncMirror.teleportAnyObjectFromServer(position, target.transform.rotation, target.transform.localScale);
+        }
+
+        /// <summary>Rings tried inside the preferred distance, for gaps too tight for a full step.</summary>
+        private const int SpotCloserRings = 1;
+
+        /// <summary>Directions tried per ring; eight is every 45 degrees around the anchor.</summary>
+        private const int SpotsPerRing = 8;
+
+        /// <summary>How far below the anchor a candidate will accept a floor, so a ledge is a step down and not a drop.</summary>
+        private const float FloorSearchDepth = 1.5f;
+
+        /// <summary>
+        /// Shrinks the capsule used to test a spot. A gap exactly as wide as a player would otherwise be
+        /// rejected on float noise, and the controller's skin width means it never quite fills its own radius.
+        /// </summary>
+        private const float FitTolerance = 0.95f;
+
+        /// <summary>
+        /// A spot near <paramref name="anchor"/> that <paramref name="mover"/> fits in, preferring
+        /// <paramref name="facing"/> at arm's length and sweeping around the anchor when that is blocked.
+        /// Falls back to the anchor's own position, which is known to fit a player because one is standing in it.
+        /// </summary>
+        private static Vector3 SpotNear(Vector3 anchor, Vector3 facing, FirstPersonController mover)
+        {
+            var candidates = SpotSearch.Candidates(SpotSearch.PreferredDistance, SpotCloserRings, SpotsPerRing);
+            var forward = Flatten(facing);
+            var right = Vector3.Cross(Vector3.up, forward);
+            var spot = anchor;
+            SpotSearch.Pick(candidates, i =>
+            {
+                var point = anchor + forward * candidates[i].Forward + right * candidates[i].Right;
+                var standable = StandablePoint(point, mover);
+                if (standable == null)
+                    return false;
+                spot = standable.Value;
+                return true;
+            });
+            return spot;
+        }
+
+        /// <summary>Flattens a look direction onto the ground plane, so candidates never aim into the sky or the floor.</summary>
+        private static Vector3 Flatten(Vector3 direction)
+        {
+            var flat = new Vector3(direction.x, 0f, direction.z);
+            return flat.sqrMagnitude > 0.0001f ? flat.normalized : Vector3.forward;
+        }
+
+        /// <summary>
+        /// Where <paramref name="mover"/> would stand at <paramref name="candidate"/>, or null if they would not
+        /// fit there. Candidates arrive at the anchor's own height, which can be over a ledge or a little inside a
+        /// step, so the floor is found first and the capsule tested where the player would come to rest.
+        /// </summary>
+        private static Vector3? StandablePoint(Vector3 candidate, FirstPersonController mover)
+        {
+            var controller = mover.Controller;
+            if (controller == null)
+                return candidate;
+            var radius = controller.radius;
+            var height = Mathf.Max(controller.height, radius * 2f);
+            var mask = SolidMask(mover.gameObject.layer);
+
+            // From head height down, so a candidate sunk into a step still finds the surface above it. A candidate
+            // buried deep in rock starts inside the collider and finds nothing, which rejects it.
+            if (!Physics.Raycast(candidate + Vector3.up * height, Vector3.down, out var floor, height + FloorSearchDepth, mask, QueryTriggerInteraction.Ignore))
+                return null;
+
+            // transform.position is the capsule's centre: the game pins CharacterController.center to zero every frame.
+            var centre = floor.point + Vector3.up * (height * 0.5f + controller.skinWidth);
+            var cap = Mathf.Max(0f, height * 0.5f - radius);
+            if (Physics.CheckCapsule(centre - Vector3.up * cap, centre + Vector3.up * cap, radius * FitTolerance, mask, QueryTriggerInteraction.Ignore))
+                return null;
+            return centre;
+        }
+
+        private static int _solidMask;
+        private static int _solidMaskLayer = -1;
+
+        /// <summary>
+        /// The layers a player's capsule actually collides with, taken from the physics matrix rather than
+        /// guessed: those are exactly the ones that can push it out of the level. The player's own layer is left
+        /// out so another player or a body standing in a spot does not rule it out -- two capsules resolve by
+        /// sliding apart on the floor, which is harmless.
+        /// </summary>
+        private static int SolidMask(int playerLayer)
+        {
+            if (_solidMaskLayer == playerLayer)
+                return _solidMask;
+            var mask = 0;
+            for (var layer = 0; layer < 32; layer++)
+                if (layer != playerLayer && !Physics.GetIgnoreLayerCollision(playerLayer, layer))
+                    mask |= 1 << layer;
+            _solidMaskLayer = playerLayer;
+            _solidMask = mask;
+            return mask;
         }
 
         /// <summary>
