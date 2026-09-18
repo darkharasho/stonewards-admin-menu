@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.1</TargetFramework>
     <AssemblyName>AdminMenu</AssemblyName>
     <RootNamespace>AdminMenu</RootNamespace>
-    <Version>0.1.4</Version>
+    <Version>0.1.5</Version>
     <LangVersion>latest</LangVersion>
     <Nullable>disable</Nullable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>

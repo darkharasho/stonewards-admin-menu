@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Fix: reviving yourself from the menu while dead no longer leaves you unable to move. Closing the menu handed input back to the game's dead state because that's where the menu was opened from; it now picks the state that matches whether you're actually alive, so killing yourself from the menu behaves too.
+
 ## 0.1.4
 
 - Fix: the item list no longer shows the game's scrap wood pieces (the many "Wood" entries). Spawned into the inventory they couldn't be dropped; the wood they turn into is still listed.

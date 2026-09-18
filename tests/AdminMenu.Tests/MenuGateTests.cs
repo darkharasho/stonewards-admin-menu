@@ -33,4 +33,23 @@ public class MenuGateTests
     {
         Assert.True(MenuGate.CanToggle(pluginEnabled: false, inGame: false, MenuInputState.Other, menuOpen: true));
     }
+
+    [Fact]
+    public void RestoresGameplayAfterRevivingYourselfFromTheMenuWhileDead()
+    {
+        Assert.Equal(MenuInputState.Gameplay, MenuGate.StateToRestore(MenuInputState.Menu, localPlayerDead: false));
+    }
+
+    [Fact]
+    public void RestoresTheDeadStateWhenStillDead()
+    {
+        Assert.Equal(MenuInputState.Dead, MenuGate.StateToRestore(MenuInputState.Menu, localPlayerDead: true));
+    }
+
+    [Fact]
+    public void LeavesAStateTheMenuDidNotSetAlone()
+    {
+        Assert.Null(MenuGate.StateToRestore(MenuInputState.Gameplay, localPlayerDead: true));
+        Assert.Null(MenuGate.StateToRestore(MenuInputState.Dead, localPlayerDead: false));
+    }
 }

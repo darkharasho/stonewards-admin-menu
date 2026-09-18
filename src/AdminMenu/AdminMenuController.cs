@@ -85,22 +85,35 @@ namespace AdminMenu
         /// <summary>
         /// Hands input back only if the menu's own state is still in effect: a scene load or a death that
         /// happened while the menu was open has already put the game where it wants to be, and overwriting
-        /// that would strand the player with no input. The remembered state is sanity-checked for the same
-        /// reason, since anything the menu could not have been opened from is not safe to return to.
+        /// that would strand the player with no input. Which state to return to is decided by
+        /// <see cref="MenuGate.StateToRestore"/> from whether the local player is dead right now, so
+        /// reviving or killing yourself from the menu lands in the matching state.
         /// </summary>
         /// <returns>False if the state was not ours to restore.</returns>
         private static bool RestoreInputState(InputManager input)
         {
-            if (input.CurrentInputState != InputManager.InputState.GeneralMenu)
+            var current = input.CurrentInputState == InputManager.InputState.GeneralMenu
+                ? MenuInputState.Menu
+                : MenuInputState.Other;
+            var restore = MenuGate.StateToRestore(current, LocalPlayerIsDead());
+            if (restore == null)
                 return false;
-
-            // The inventory screen closes itself when the admin menu takes input, so going back to the
-            // Inventory state would leave inventory input live with no inventory on screen.
-            var restore = _stateBeforeOpen == InputManager.InputState.Dead
+            input.SetState(restore == MenuInputState.Dead
                 ? InputManager.InputState.Dead
-                : InputManager.InputState.Gameplay;
-            input.SetState(restore);
+                : InputManager.InputState.Gameplay);
             return true;
+        }
+
+        /// <summary>
+        /// Whether the local player is dead. With no local player to ask — between scenes, say — falls back to
+        /// the state the menu was opened from.
+        /// </summary>
+        private static bool LocalPlayerIsDead()
+        {
+            var player = PlayerActions.LocalPlayer();
+            if (player == null || player.PlayerStats == null)
+                return _stateBeforeOpen == InputManager.InputState.Dead;
+            return player.PlayerStats.isDead;
         }
 
         /// <summary>
