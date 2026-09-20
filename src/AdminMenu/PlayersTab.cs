@@ -149,7 +149,8 @@ namespace AdminMenu
             var bring = AddButton(row, "Bring", () => PlayerActions.Bring(player));
             // Host-only, and only for players running the mod: elevating someone with no menu to unlock
             // would do nothing. Hidden entirely off the host rather than shown disabled, since a client can
-            // never grant and a permanently dead button just raises questions.
+            // never grant and a permanently dead button just raises questions. The grant is saved -- see the
+            // Admins tab, which lists and revokes the ones made here.
             var elevate = AddButton(row, "Elevate", () => Access.SetGranted(player, !Access.IsGranted(player)));
 
             var statsPanel = BuildStatsPanel(player, out var updateStats);
@@ -198,12 +199,12 @@ namespace AdminMenu
                     var granted = Access.IsGranted(player);
                     var hasMod = Access.HasMod(player);
                     elevate.text = granted ? "Revoke" : "Elevate";
-                    elevate.SetEnabled(Plugin.Enabled.Value && hasMod);
-                    elevate.tooltip = !hasMod
-                        ? "This player needs the admin menu installed before you can give them admin."
-                        : granted
-                            ? "Take back admin for this player. Lasts for this session only."
-                            : "Give this player the admin menu for this session. Not saved to your config.";
+                    elevate.SetEnabled(Plugin.Enabled.Value && (granted || hasMod));
+                    elevate.tooltip = granted
+                        ? "Take back this player's admin. See the Admins tab for everyone you've granted."
+                        : !hasMod
+                            ? "This player needs the admin menu installed before you can give them admin."
+                            : "Give this player the admin menu. Saved, so it still holds next time you host.";
                 }
 
                 statsToggle.SetEnabled(allowed);

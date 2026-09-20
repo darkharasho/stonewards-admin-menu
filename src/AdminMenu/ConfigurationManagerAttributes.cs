@@ -9,5 +9,7 @@ namespace AdminMenu
     {
         public string DispName;
         public int? Order;
+        /// <summary>False hides the setting from the menu, for values the mod maintains rather than the player.</summary>
+        public bool? Browsable;
     }
 }

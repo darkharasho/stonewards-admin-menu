@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.8";
+        public const string PluginVersion = "0.1.9";
 
         /// <summary>
         /// The mod author's Steam ID (darkharasho). Always treated as a trusted admin, in addition to whoever
@@ -29,6 +29,7 @@ namespace AdminMenu
         internal static ConfigEntry<KeyboardShortcut> ToggleKey;
         internal static ConfigEntry<bool> CloseOnEscape;
         internal static ConfigEntry<string> TrustedAdmins;
+        internal static ConfigEntry<string> SavedAdmins;
         internal static ConfigEntry<bool> GodMode;
         internal static ConfigEntry<bool> InfiniteStamina;
         internal static ConfigEntry<bool> InfiniteAmmo;
@@ -58,6 +59,14 @@ namespace AdminMenu
                 + "Note: the mod author (darkharasho, " + OwnerSteamId + ") is always a trusted admin as well and cannot be removed here; "
                 + "build the mod from source without it if you don't want that.", null,
                 new ConfigurationManagerAttributes { DispName = "Trusted admins (Steam IDs)", Order = 20 }));
+            // Written by the Admins tab rather than by hand, so it is hidden from the in-game settings panel:
+            // editing a generated id=name list there would only be a way to corrupt it. It stays plain text in
+            // the .cfg so it can still be inspected, backed up or repaired.
+            SavedAdmins = Config.Bind("General", "SavedAdmins", "", new ConfigDescription(
+                "Admins granted from the menu's Players tab, as id=name, comma-separated. Managed by the menu's "
+                + "Admins tab -- grant and revoke there rather than editing this. TrustedAdmins is the list to "
+                + "edit by hand, for somebody who has never been in your lobby.", null,
+                new ConfigurationManagerAttributes { DispName = "Saved admins", Browsable = false, Order = 19 }));
 
             GodMode = Config.Bind("Cheats", "GodMode", false, new ConfigDescription(
                 "Keep your health topped up and block incoming damage. As a client, the host blocks the hits for you when it runs this mod; against a host that doesn't, this can only heal you back afterwards, so a big enough burst still kills.", null,

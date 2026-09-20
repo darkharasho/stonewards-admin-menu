@@ -44,21 +44,21 @@ public class TrustListTests
     }
 
     [Fact]
-    public void TrustsAPlayerTheHostElevatedForTheSession()
+    public void TrustsAPlayerTheHostElevatedFromTheMenu()
     {
         var ids = TrustList.Resolve("", Owner, new ulong[] { 555 });
         Assert.Contains(555UL, ids);
     }
 
     [Fact]
-    public void SessionGrantsJoinTheConfiguredAdminsRatherThanReplacingThem()
+    public void GrantedAdminsJoinTheConfiguredAdminsRatherThanReplacingThem()
     {
         var ids = TrustList.Resolve("111", Owner, new ulong[] { 555 });
         Assert.Equal(new[] { 111UL, 555UL, 76561197987892075UL }, ids.OrderBy(id => id));
     }
 
     [Fact]
-    public void IgnoresAZeroSessionGrant()
+    public void IgnoresAZeroGrantedId()
     {
         // A player whose Steam ID hasn't synced yet reads as 0; trusting that would trust everyone whose ID
         // is likewise unset.
@@ -66,7 +66,7 @@ public class TrustListTests
     }
 
     [Fact]
-    public void ResolvesWithoutSessionGrantsWhenThereAreNone()
+    public void ResolvesWithoutGrantedIdsWhenThereAreNone()
     {
         Assert.Equal(TrustList.Resolve("111", Owner), TrustList.Resolve("111", Owner, null));
     }

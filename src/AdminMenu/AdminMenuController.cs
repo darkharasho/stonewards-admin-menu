@@ -147,6 +147,9 @@ namespace AdminMenu
 
                 var cheats = CheatsTab.Build(out var refreshCheats);
                 _panel.AddTab("Cheats", cheats, refreshCheats);
+
+                var admins = AdminsTab.Build(out var refreshAdmins);
+                _panel.AddTab("Admins", admins, refreshAdmins);
             }
 
             // Same staleness check the HUD counter uses: a new Hud, or an element with no panel, means the

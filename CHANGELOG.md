@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.9
+
+- Admins granted with **Elevate** are now saved, so somebody you gave the menu to still has it the next time you host. Previously a grant was held in memory and dropped when you left the lobby, which meant re-elevating the same people every session; hand-editing Steam IDs into `TrustedAdmins` was the only way to make it stick.
+- New **Admins tab** listing everyone who can use the menu in your games, in the three groups it comes from: granted from the menu, set in `TrustedAdmins`, and the mod author. Each granted admin has a **Revoke** button that works whether or not they're online — the reason the tab exists, since Elevate and Revoke on a player's row can only reach players who are in your lobby right now.
+- `TrustedAdmins` is unchanged and stays the list to edit by hand, for granting admin to somebody who has never been in your lobby. Granted admins are saved separately in `SavedAdmins`, which the menu maintains.
+- Elevate has no confirmation step, so a misclick now persists until you revoke it. The Admins tab is where you'd see and undo that.
+
 ## 0.1.8
 
 - Fix: god mode no longer lets a client be killed by a heavy burst of damage, such as a volley of strong projectiles. The game clamps health and sets the death flag in the same server-side call, so a client noticing its health drop and healing back afterwards was always too late — the host had already marked it dead. Anything that covered the whole health bar before the next heal was lethal. A client now tells the host when its god mode is on and the host vetoes the damage itself, before the death check sees it, exactly as it already did for its own player. Trusted admins only, and the host stops protecting a player within a couple of seconds of their admin being revoked.

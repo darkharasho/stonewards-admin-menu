@@ -6,6 +6,8 @@ namespace AdminMenu
 {
     /// <summary>
     /// Who the mod treats as an admin, as plain Steam IDs so the rule can be tested without Steam or the game.
+    /// The sources are the host's configured <c>TrustedAdmins</c> list, the admins granted from the menu (see
+    /// <see cref="AdminRoster"/>) and the mod author.
     ///
     /// The mod author is trusted on every install and cannot be configured away. Holding that grant in the
     /// config as a default was not enough: a host editing <c>TrustedAdmins</c> to add their own friends
@@ -25,17 +27,17 @@ namespace AdminMenu
         }
 
         /// <summary>
-        /// As above, plus <paramref name="sessionGrants"/> -- players the host elevated from the menu for this
-        /// session only. They are deliberately not written to the config: a grant made to get somebody through
-        /// one run shouldn't quietly still be there next week.
+        /// As above, plus <paramref name="grantedIds"/> -- the players the host elevated from the menu, held
+        /// in the <see cref="AdminRoster"/>. They join the configured list rather than replacing it: the
+        /// config stays the fallback for granting admin to somebody who has never been in your lobby.
         /// </summary>
-        public static HashSet<ulong> Resolve(string configuredList, string ownerId, IEnumerable<ulong> sessionGrants)
+        public static HashSet<ulong> Resolve(string configuredList, string ownerId, IEnumerable<ulong> grantedIds)
         {
             var ids = Parse(configuredList);
             if (ulong.TryParse((ownerId ?? string.Empty).Trim(), out var owner))
                 ids.Add(owner);
-            if (sessionGrants != null)
-                foreach (var id in sessionGrants)
+            if (grantedIds != null)
+                foreach (var id in grantedIds)
                     if (id != 0)
                         ids.Add(id);
             return ids;
