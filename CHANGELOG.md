@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.10
+
+- New cheat: **Pickaxe reach**, a slider from the pickaxe's normal 3 metres out to 20. The game measures a swing with one raycast that it fixes at 3, so this re-measures it at the distance you choose. That one raycast serves both halves of a swing, which means the reach applies to hitting props and destructibles as well as to digging terrain — there is no separate number to lengthen only one of them. Nothing downstream needed changing: the dig itself already traces 100 metres, and neither endpoint checks how far away you were.
+- New cheat: **Pickaxe dig size**, a slider from the pickaxe's normal 0.35 up to 1.5 — the radius a bomb clears. The pickaxe and the bomb already dig through the same call and differ only in the size they ask for, so this sets the size your digs send. Only the crater grows: resources still come from the one grid point your swing landed on, because that is all the pickaxe's dig path ever spawns from. Large sizes are a lot of terrain to rebuild per swing, so expect a frame cost, especially alongside the super speed pickaxe.
+- New cheat: **Quick offer**. Offering at the forge normally places one item per tick of the hold, so emptying a stack of stone means standing there for as many seconds as you have items. With this on, one press sends the whole stack. The count is read from the stack you're actually holding, so the forge is credited exactly what leaves your inventory — no more, no less.
+- Fix: the Stats panel now shows another player's real stat values instead of their base ones. The game syncs only four stat values over the network, so every peer works the rest out from the upgrades it knows about and holds nothing but base numbers for somebody else's player. An admin could set another player's stats correctly — the value sent is a target, and each peer sizes its own modifier to hit it — but the numbers they were reading before they set anything were wrong, which made the panel close to useless for anyone but the host's own player. The menu now asks the player's own client for its values while their Stats panel is open, roughly once a second, and shows those.
+- The host asks too: its copy is no better than a client's for somebody else's player, so opening another player's stats as host was showing base values as well.
+- A player who doesn't have the admin menu has no client to ask, so their panel still shows the stats this peer holds for them and says so. The same note appears for a second or two before the first reply arrives.
+- Only the connection that owns a player may report that player's stats, and the host relays a reply only to admins who asked for it.
+- The gold "changed" highlight still reflects only the stats you changed from this peer, so a stat the host set won't show gold on a client.
+
 ## 0.1.9
 
 - Admins granted with **Elevate** are now saved, so somebody you gave the menu to still has it the next time you host. Previously a grant was held in memory and dropped when you left the lobby, which meant re-elevating the same people every session; hand-editing Steam IDs into `TrustedAdmins` was the only way to make it stick.

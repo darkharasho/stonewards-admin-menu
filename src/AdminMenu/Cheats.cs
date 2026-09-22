@@ -19,6 +19,18 @@ namespace AdminMenu
         private static readonly StatModifier StrengthModifier =
             new StatModifier(StrengthMultiplier - 1f, StatModType.PERCENT_MULT, StrengthSource);
 
+        // The vanilla pickaxe's dig size (DiggingSettingsSO.diggSize) and a bomb's (PickableBomb.diggingRadius).
+        // Both are the game's own defaults, hard-coded because diggingRadius is a private serialized field on
+        // the bomb prefab with no accessor -- if the game retunes the bomb, this number won't follow.
+        public const float VanillaDigSize = 0.35f;
+        public const float BombDigSize = 1.5f;
+
+        // The pickaxe's reach, hard-coded as the raycast distance in DiggingTool.Raycast. The ceiling is ours,
+        // not the game's, but DiggingManager.PlayerDigGround raycasts only 100 units itself, so terrain past
+        // that wouldn't dig however far this went.
+        public const float VanillaReach = 3f;
+        public const float MaxReach = 20f;
+
         // CmdUpdateHealth's argument is a delta, not an absolute (PlayerStats.ServerUpdateHealth), so sending
         // it every frame while under max health re-sends the full remaining deficit before the previous send
         // has round-tripped and been synced back — a burst of redundant full-heal deltas per hit on a plain
@@ -37,6 +49,17 @@ namespace AdminMenu
         public static bool InfiniteAmmoActive => Plugin.Enabled.Value && Access.Allowed && Plugin.InfiniteAmmo.Value;
         private static bool SuperPickaxeActive => Plugin.Enabled.Value && Access.Allowed && Plugin.SuperPickaxe.Value;
         public static bool SuperSpeedPickaxeActive => Plugin.Enabled.Value && Access.Allowed && Plugin.SuperSpeedPickaxe.Value;
+        public static bool QuickOfferActive => Plugin.Enabled.Value && Access.Allowed && Plugin.QuickOffer.Value;
+
+        // Slider-driven rather than a toggle: at the vanilla size there is nothing to do, so the floor of the
+        // slider's range is the cheat's own off switch (see Patches.BombPickaxePatch).
+        public static bool BombPickaxeActive => Plugin.Enabled.Value && Access.Allowed && PickaxeDigSize > VanillaDigSize;
+        public static float PickaxeDigSize => Plugin.PickaxeDigSize.Value;
+
+        // Same shape as the dig size slider: the vanilla reach is the bottom of the range and the off switch
+        // (see Patches.LongReachPatch).
+        public static bool PickaxeReachActive => Plugin.Enabled.Value && Access.Allowed && PickaxeReach > VanillaReach;
+        public static float PickaxeReach => Plugin.PickaxeReach.Value;
 
         /// <summary>Called every frame from <see cref="Plugin.Update"/>.</summary>
         public static void Update()

@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.9";
+        public const string PluginVersion = "0.1.10";
 
         /// <summary>
         /// The mod author's Steam ID (darkharasho). Always treated as a trusted admin, in addition to whoever
@@ -35,6 +35,9 @@ namespace AdminMenu
         internal static ConfigEntry<bool> InfiniteAmmo;
         internal static ConfigEntry<bool> SuperPickaxe;
         internal static ConfigEntry<bool> SuperSpeedPickaxe;
+        internal static ConfigEntry<bool> QuickOffer;
+        internal static ConfigEntry<float> PickaxeDigSize;
+        internal static ConfigEntry<float> PickaxeReach;
 
         private Harmony _harmony;
         private bool _statEditorFailed;
@@ -83,6 +86,19 @@ namespace AdminMenu
             SuperSpeedPickaxe = Config.Bind("Cheats", "SuperSpeedPickaxe", false, new ConfigDescription(
                 "Dig 3x faster.", null,
                 new ConfigurationManagerAttributes { DispName = "Super speed pickaxe", Order = 5 }));
+            QuickOffer = Config.Bind("Cheats", "QuickOffer", false, new ConfigDescription(
+                "Offer the whole stack to the forge in one press, instead of one item at a time. Works on any host.", null,
+                new ConfigurationManagerAttributes { DispName = "Quick offer", Order = 3 }));
+            PickaxeDigSize = Config.Bind("Cheats", "PickaxeDigSize", Cheats.VanillaDigSize, new ConfigDescription(
+                "How big a hole each dig takes out: 0.35 is the normal pickaxe, 1.5 matches a bomb's crater. "
+                + "Only the hole grows -- you still get one block's worth of resources per dig.",
+                new AcceptableValueRange<float>(Cheats.VanillaDigSize, Cheats.BombDigSize),
+                new ConfigurationManagerAttributes { DispName = "Pickaxe dig size", Order = 7 }));
+            PickaxeReach = Config.Bind("Cheats", "PickaxeReach", Cheats.VanillaReach, new ConfigDescription(
+                "How far the pickaxe reaches, in metres: 3 is normal. Applies to hitting props as well as "
+                + "digging, since the game measures both with the same raycast.",
+                new AcceptableValueRange<float>(Cheats.VanillaReach, Cheats.MaxReach),
+                new ConfigurationManagerAttributes { DispName = "Pickaxe reach", Order = 6 }));
 
             _harmony = new Harmony(PluginGuid);
             Patch(typeof(StaminaPatches));
@@ -91,6 +107,9 @@ namespace AdminMenu
             Patch(typeof(InfiniteAmmoPatches));
             Patch(typeof(RagdollReviveFix));
             Patch(typeof(DigSpeedPatch));
+            Patch(typeof(QuickOfferPatch));
+            Patch(typeof(BombPickaxePatch));
+            Patch(typeof(LongReachPatch));
 
             Log.LogInfo($"{PluginName} {PluginVersion} loaded");
             // Stated in the log as well as the README: a grant nobody can see is the part that would make this

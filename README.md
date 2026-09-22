@@ -8,7 +8,7 @@ A BepInEx plugin for Stonewards that adds an in-game admin/cheat menu, following
 - **Items tab** — search and browse the item catalog and spawn any item, with an amount next to each one.
 - **Resources tab** — add meta currency to your save, spawn any kind of treasure chest in front of you, and spawn dug-up resources and scrap.
 - **Admins tab** — see everyone who can use the admin menu in your games, and revoke anyone you granted it to, online or not.
-- **Cheats tab** — toggle god mode, infinite stamina, infinite arrows & bombs, a super pickaxe (25x dig strength) and a super speed pickaxe (3x digging speed).
+- **Cheats tab** — toggle god mode, infinite stamina, infinite arrows & bombs, quick offer (the whole stack to the forge in one press), a super pickaxe (25x dig strength) and a super speed pickaxe (3x digging speed), and slide the pickaxe's dig size up to a bomb's crater or its reach out to 20 metres.
 - A themed, tabbed panel matching the game's own menus, not a raw debug list.
 
 ## Opening the menu
@@ -31,6 +31,9 @@ Settings are stored in `BepInEx/config/com.darkharasho.stonewards.adminmenu.cfg`
 | `Cheats` | `InfiniteAmmo` | `false` | Arrows, ballista bolts, bombs and other throwables are never used up. You need at least one to start with. |
 | `Cheats` | `SuperPickaxe` | `false` | Dig with 25x strength, including the heavy dig bonus. |
 | `Cheats` | `SuperSpeedPickaxe` | `false` | Dig 3x faster. |
+| `Cheats` | `QuickOffer` | `false` | Offer the whole stack to the forge in one press, instead of one item at a time. Works on any host. |
+| `Cheats` | `PickaxeDigSize` | `0.35` | How big a hole each dig takes out: `0.35` is the normal pickaxe, `1.5` matches a bomb's crater. Only the hole grows — you still get one block's worth of resources per dig. Works on any host. |
+| `Cheats` | `PickaxeReach` | `3` | How far the pickaxe reaches, in metres: `3` is normal, up to `20`. Applies to hitting props as well as digging, since the game measures both with the same raycast. Works on any host. |
 
 ## Mod author access
 
@@ -61,7 +64,7 @@ There is no confirmation step on Elevate, so a misclick persists until you revok
 
 Positions are owned by each player's own client, so **Go to** works for anyone but **Bring** needs the host, either you or a host running this mod.
 
-Stat changes have to reach both the host and the player they're for, since the host decides health, defense and damage while each player's own game decides movement, digging and attack speed. The admin menu sends them itself, so for full effect both of those need the admin menu installed. As a client you can only edit stats when the host has it.
+Stat changes have to reach both the host and the player they're for, since the host decides health, defense and damage while each player's own game decides movement, digging and attack speed. The admin menu sends them itself, so for full effect both of those need the admin menu installed. As a client you can only edit stats when the host has it. Reading another player's stats needs their own game too: the game syncs only four stat values, so every other number a peer holds for somebody else is that player's base value. The menu asks the player's own game for its values while their Stats panel is open and shows those; for a player without the mod there's nothing to ask, and the panel says so.
 
 Damage in Stonewards is decided on the server, and the game clamps health and marks you dead in the same call — so god mode only really works where it can veto the hit before that happens. **As host, it blocks hits outright.** As a trusted client on a host running this mod, your game asks the host to hold god mode for you and the host blocks the hits on your behalf, which works the same way.
 

@@ -239,9 +239,10 @@ namespace AdminMenu
 
             var cells = new List<Action<bool>>();
             var names = new List<string>();
-            foreach (var statName in StatEditor.RingStats)
+            for (var statIndex = 0; statIndex < StatEditor.RingStats.Length; statIndex++)
             {
-                var name = statName;
+                var name = StatEditor.RingStats[statIndex];
+                var index = statIndex;
                 names.Add(name);
                 CharacterStat Stat() => StatEditor.Get(player != null ? player.PlayerStats : null, name);
 
@@ -260,7 +261,7 @@ namespace AdminMenu
                 cell.Add(label);
 
                 var edited = false;
-                var field = new FloatField { value = StatEditor.DisplayValue(Stat()) };
+                var field = new FloatField { value = StatEditor.ShownValue(player, index, Stat()) };
                 field.style.width = 80f;
                 field.style.marginRight = 6f;
                 field.RegisterValueChangedCallback(_ => edited = true);
@@ -293,7 +294,7 @@ namespace AdminMenu
                 {
                     var stat = Stat();
                     if (!edited && field.focusController?.focusedElement != field)
-                        field.SetValueWithoutNotify((float)Math.Round(StatEditor.DisplayValue(stat), 2));
+                        field.SetValueWithoutNotify((float)Math.Round(StatEditor.ShownValue(player, index, stat), 2));
                     unit.text = stat == null ? ""
                         : stat._formatType == FormatType.Percentage ? "%"
                         : stat._formatType == FormatType.PercentageBySecond ? "%/s"
@@ -326,6 +327,10 @@ namespace AdminMenu
             {
                 var blocked = StatEditor.BlockedReason(player);
                 var enabled = blocked == null && PlayerActions.ActionsAllowed;
+                // Only while somebody is looking: the panel is the only thing that reads the reply, and a
+                // player's stats change as they level, so asking once wouldn't keep the fields true.
+                if (enabled)
+                    StatEditor.Request(player);
                 note.text = blocked ?? StatEditor.PartialReason(player)
                     ?? "Type a value and press Set. Changed stats are gold; Reset puts one back.";
                 resetAll.SetEnabled(enabled);

@@ -15,6 +15,7 @@
     <Compile Include="../../src/AdminMenu/TrustList.cs" Link="TrustList.cs" />
     <Compile Include="../../src/AdminMenu/AdminRoster.cs" Link="AdminRoster.cs" />
     <Compile Include="../../src/AdminMenu/ProtectedPlayers.cs" Link="ProtectedPlayers.cs" />
+    <Compile Include="../../src/AdminMenu/StatSnapshots.cs" Link="StatSnapshots.cs" />
   </ItemGroup>
 
   <ItemGroup>

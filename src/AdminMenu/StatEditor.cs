@@ -13,6 +13,19 @@ namespace AdminMenu
         public float Value;
     }
 
+    /// <summary>Asks the peer that holds a player's real stats to report them. See <see cref="StatSnapshots"/>.</summary>
+    internal struct StatQueryMessage : NetworkMessage
+    {
+        public uint NetId;
+    }
+
+    /// <summary>A player's stat values in display units, one per <see cref="StatEditor.RingStats"/> entry, in order.</summary>
+    internal struct StatSnapshotMessage : NetworkMessage
+    {
+        public uint NetId;
+        public float[] Values;
+    }
+
     /// <summary>
     /// Sets any of the stats that level-up rings raise to a chosen value, per player, by adding one flat
     /// modifier sized so the stat's final value lands on the target.
@@ -23,6 +36,10 @@ namespace AdminMenu
     /// A value therefore has to be
     /// applied on the host and on the player's own client. The game has no message for that, so this
     /// sends its own, and only to peers running this mod (see <see cref="Access"/>).
+    ///
+    /// Reading works the same way round. Since a peer holds only base values for somebody else's player,
+    /// an admin looking at another player asks that player's own client for its values and shows those
+    /// instead; see <see cref="Request"/> and <see cref="StatSnapshots"/>.
     /// </summary>
     internal static class StatEditor
     {
@@ -52,6 +69,18 @@ namespace AdminMenu
         private const float ReapplyIntervalSeconds = 0.5f;
         private static float _nextReapply;
 
+        // What other players' own clients last reported, and how often we ask them for it.
+        private const float SnapshotFreshForSeconds = 3f;
+        private const float QueryIntervalSeconds = 1f;
+        private static readonly StatSnapshots Snapshots = new StatSnapshots(RingStats.Length, SnapshotFreshForSeconds);
+        private static readonly Dictionary<uint, float> NextQuery = new Dictionary<uint, float>();
+
+        // Host only: the admins waiting on a snapshot of a player, by that player's netId, with the time
+        // they asked so a viewer who closed the panel or left is forgotten rather than sent a reply.
+        private static readonly Dictionary<uint, Dictionary<NetworkConnectionToClient, float>> Waiting =
+            new Dictionary<uint, Dictionary<NetworkConnectionToClient, float>>();
+        private const float WaitingExpirySeconds = 5f;
+
         private static bool _serverHandler;
         private static bool _clientHandler;
 
@@ -69,7 +98,34 @@ namespace AdminMenu
                 Stat = reader.ReadString(),
                 Value = reader.ReadFloat(),
             };
+
+            Writer<StatQueryMessage>.write = (writer, message) => writer.WriteUInt(message.NetId);
+            Reader<StatQueryMessage>.read = reader => new StatQueryMessage { NetId = reader.ReadUInt() };
+
+            Writer<StatSnapshotMessage>.write = (writer, message) =>
+            {
+                var values = message.Values ?? Array.Empty<float>();
+                writer.WriteUInt(message.NetId);
+                writer.WriteInt(values.Length);
+                foreach (var value in values)
+                    writer.WriteFloat(value);
+            };
+            Reader<StatSnapshotMessage>.read = reader =>
+            {
+                var netId = reader.ReadUInt();
+                var count = reader.ReadInt();
+                // The host reads these from clients, so a length is something to be talked into, not trusted.
+                // Anything but this build's stat list is dropped by StatSnapshots anyway.
+                if (count < 0 || count > MaxSnapshotValues)
+                    return new StatSnapshotMessage { NetId = netId, Values = Array.Empty<float>() };
+                var values = new float[count];
+                for (var i = 0; i < count; i++)
+                    values[i] = reader.ReadFloat();
+                return new StatSnapshotMessage { NetId = netId, Values = values };
+            };
         }
+
+        private const int MaxSnapshotValues = 256;
 
         public static CharacterStat Get(PlayerStats stats, string name)
         {
@@ -103,6 +159,58 @@ namespace AdminMenu
             return stat == null ? 0f : stat.Value * Scale(stat);
         }
 
+        /// <summary>
+        /// The value to show for stat number <paramref name="index"/>: what the player's own client reported,
+        /// when that's in hand, otherwise this peer's copy. Only another player's values can be reported --
+        /// your own are already the real ones.
+        /// </summary>
+        public static float ShownValue(FirstPersonController player, int index, CharacterStat stat)
+        {
+            if (player != null && !player.isLocalPlayer && Snapshots.TryGet(player.netId, index, Time.unscaledTime, out var value))
+                return value;
+            return DisplayValue(stat);
+        }
+
+        /// <summary>Whether the values shown for <paramref name="player"/> are their real ones.</summary>
+        public static bool HasRealValues(FirstPersonController player)
+        {
+            return player != null && (player.isLocalPlayer || Snapshots.IsFresh(player.netId, Time.unscaledTime));
+        }
+
+        /// <summary>
+        /// Asks for <paramref name="player"/>'s real stats, at most once a second per player. Called while
+        /// their Stats panel is open: the values are only wanted while somebody is looking at them, and a
+        /// player's upgrades change as they level, so one reply wouldn't stay true.
+        /// </summary>
+        public static void Request(FirstPersonController player)
+        {
+            if (player == null || player.isLocalPlayer || !Access.Allowed)
+                return;
+            var now = Time.unscaledTime;
+            if (NextQuery.TryGetValue(player.netId, out var next) && now < next)
+                return;
+
+            var message = new StatQueryMessage { NetId = player.netId };
+            if (NetworkServer.active)
+            {
+                // The host's own copy is no better than a client's for somebody else's player, so it asks
+                // the owner directly. A player without the mod has no handler to ask.
+                var owner = player.connectionToClient;
+                if (owner == null || owner == NetworkServer.localConnection || !Access.HasMod(player))
+                    return;
+                owner.Send(message);
+            }
+            else if (NetworkClient.active && Access.HostHasMod())
+            {
+                NetworkClient.Send(message);
+            }
+            else
+            {
+                return;
+            }
+            NextQuery[player.netId] = now + QueryIntervalSeconds;
+        }
+
         public static bool IsOverridden(CharacterStat stat)
         {
             return stat != null && Applied.Contains(stat);
@@ -125,10 +233,10 @@ namespace AdminMenu
         {
             if (player == null)
                 return null;
-            if (!player.isLocalPlayer && !NetworkServer.active)
-                return "As a client you see this player's base stats without their upgrades; the value you set still lands exactly for them and the host.";
             if (!player.isLocalPlayer && !Access.HasMod(player))
-                return $"{player.playerName} doesn't have the admin menu, so only host-side stats (health, defense, damage) change.";
+                return $"{player.playerName} doesn't have the admin menu, so these are the stats this peer holds for them rather than their own, and only host-side stats (health, defense, damage) change.";
+            if (!player.isLocalPlayer && !HasRealValues(player))
+                return $"Waiting for {player.playerName}'s own values; until they arrive these are base stats without their upgrades. The value you set lands exactly either way.";
             if (player.isLocalPlayer && !NetworkServer.active && !Access.HostHasMod())
                 return "The host doesn't have the admin menu, so host-side stats (health, defense, damage) won't change.";
             return null;
@@ -162,8 +270,12 @@ namespace AdminMenu
             {
                 Applied.Clear();
                 Targets.Clear();
+                Snapshots.Clear();
+                NextQuery.Clear();
+                Waiting.Clear();
                 return;
             }
+            DropExpiredWaiters();
             if (Targets.Count > 0 && Time.unscaledTime >= _nextReapply)
             {
                 _nextReapply = Time.unscaledTime + ReapplyIntervalSeconds;
@@ -203,6 +315,8 @@ namespace AdminMenu
             if (NetworkServer.active && !_serverHandler)
             {
                 NetworkServer.ReplaceHandler<StatBonusMessage>(OnServerMessage);
+                NetworkServer.ReplaceHandler<StatQueryMessage>(OnServerQuery);
+                NetworkServer.ReplaceHandler<StatSnapshotMessage>(OnServerSnapshot);
                 _serverHandler = true;
             }
             else if (!NetworkServer.active)
@@ -213,6 +327,8 @@ namespace AdminMenu
             if (NetworkClient.active && !_clientHandler)
             {
                 NetworkClient.ReplaceHandler<StatBonusMessage>(OnClientMessage);
+                NetworkClient.ReplaceHandler<StatQueryMessage>(OnClientQuery);
+                NetworkClient.ReplaceHandler<StatSnapshotMessage>(OnClientSnapshot);
                 _clientHandler = true;
             }
             else if (!NetworkClient.active)
@@ -244,6 +360,120 @@ namespace AdminMenu
             var player = FindPlayer(message.NetId);
             if (player != null)
                 ApplyLocal(player, message.Stat, message.Value);
+        }
+
+        /// <summary>
+        /// An admin asking for a player's real stats. The player's own client is the peer that has them, so
+        /// the question is passed on when that client runs the mod; failing that the host answers from its
+        /// own copy, which at least carries the host-side stats.
+        /// </summary>
+        private static void OnServerQuery(NetworkConnectionToClient sender, StatQueryMessage message)
+        {
+            if (!Access.IsTrusted(sender))
+            {
+                Plugin.Log.LogWarning($"Ignored a stat query from untrusted connection {sender.address}");
+                return;
+            }
+            var player = FindPlayer(message.NetId);
+            if (player == null)
+                return;
+
+            var owner = player.connectionToClient;
+            if (owner != null && owner != NetworkServer.localConnection && owner != sender && Access.HasMod(player))
+            {
+                Remember(message.NetId, sender);
+                owner.Send(message);
+                return;
+            }
+            sender.Send(Capture(player));
+        }
+
+        /// <summary>A player's own client answering for itself. Nobody else's stats are reported from here.</summary>
+        private static void OnClientQuery(StatQueryMessage message)
+        {
+            // On a host the server handler already dealt with it.
+            if (NetworkServer.active)
+                return;
+            var player = FindPlayer(message.NetId);
+            if (player != null && player.isLocalPlayer)
+                NetworkClient.Send(Capture(player));
+        }
+
+        /// <summary>
+        /// A client reporting its own player's stats, which the host keeps for its own panel and relays to
+        /// whichever admins asked. Only the connection that owns the player may report for it, so a client
+        /// can't feed everyone else made-up numbers for somebody they're not.
+        /// </summary>
+        private static void OnServerSnapshot(NetworkConnectionToClient sender, StatSnapshotMessage message)
+        {
+            var player = FindPlayer(message.NetId);
+            if (player == null)
+                return;
+            if (player.connectionToClient != sender)
+            {
+                Plugin.Log.LogWarning($"Ignored a stat report for {player.playerName} from connection {sender.address}, which doesn't own them");
+                return;
+            }
+
+            Snapshots.Store(message.NetId, message.Values, Time.unscaledTime);
+            if (!Waiting.TryGetValue(message.NetId, out var waiters))
+                return;
+            Waiting.Remove(message.NetId);
+            foreach (var waiter in waiters)
+                if (waiter.Key.isReady && Access.IsTrusted(waiter.Key))
+                    waiter.Key.Send(message);
+        }
+
+        private static void OnClientSnapshot(StatSnapshotMessage message)
+        {
+            // On a host the server handler already stored it.
+            if (NetworkServer.active)
+                return;
+            Snapshots.Store(message.NetId, message.Values, Time.unscaledTime);
+        }
+
+        /// <summary>This peer's values for <paramref name="player"/>, in <see cref="RingStats"/> order.</summary>
+        private static StatSnapshotMessage Capture(FirstPersonController player)
+        {
+            var values = new float[RingStats.Length];
+            for (var i = 0; i < RingStats.Length; i++)
+                values[i] = DisplayValue(Get(player.PlayerStats, RingStats[i]));
+            return new StatSnapshotMessage { NetId = player.netId, Values = values };
+        }
+
+        private static void Remember(uint netId, NetworkConnectionToClient waiter)
+        {
+            if (!Waiting.TryGetValue(netId, out var waiters))
+                Waiting[netId] = waiters = new Dictionary<NetworkConnectionToClient, float>();
+            waiters[waiter] = Time.unscaledTime;
+        }
+
+        /// <summary>
+        /// Forgets admins whose answer never came, so a player whose client stopped replying -- or who left
+        /// mid-question -- doesn't leave connections held here for the rest of the session.
+        /// </summary>
+        private static void DropExpiredWaiters()
+        {
+            if (Waiting.Count == 0)
+                return;
+            var cutoff = Time.unscaledTime - WaitingExpirySeconds;
+            List<uint> empty = null;
+            foreach (var entry in Waiting)
+            {
+                List<NetworkConnectionToClient> stale = null;
+                foreach (var waiter in entry.Value)
+                    if (waiter.Value < cutoff)
+                        (stale ?? (stale = new List<NetworkConnectionToClient>())).Add(waiter.Key);
+                if (stale != null)
+                    foreach (var waiter in stale)
+                        entry.Value.Remove(waiter);
+                if (entry.Value.Count == 0)
+                    (empty ?? (empty = new List<uint>())).Add(entry.Key);
+            }
+            if (empty == null)
+                return;
+            foreach (var netId in empty)
+                Waiting.Remove(netId);
         }
 
         private static void ForwardToOwner(FirstPersonController player, StatBonusMessage message, NetworkConnectionToClient sender)
