@@ -31,7 +31,7 @@ Settings are stored in `BepInEx/config/com.darkharasho.stonewards.adminmenu.cfg`
 | `Cheats` | `InfiniteAmmo` | `false` | Arrows, ballista bolts, bombs and other throwables are never used up. You need at least one to start with. |
 | `Cheats` | `SuperPickaxe` | `false` | Dig with 25x strength, including the heavy dig bonus. |
 | `Cheats` | `SuperSpeedPickaxe` | `false` | Dig 3x faster. |
-| `Cheats` | `QuickOffer` | `false` | Offer the whole stack to the forge in one press, instead of one item at a time. Works on any host. |
+| `Cheats` | `QuickOffer` | `false` | Offer the whole stack to the forge in one press, instead of one item at a time. Works on any host: with this mod on the host the stack goes in at once, otherwise about 25 items a second (the most a vanilla host's forge can credit without losing items). |
 | `Cheats` | `PickaxeDigSize` | `0.35` | How big a hole each dig takes out: `0.35` is the normal pickaxe, `1.5` matches a bomb's crater. Only the hole grows — you still get one block's worth of resources per dig. Works on any host. |
 | `Cheats` | `PickaxeReach` | `3` | How far the pickaxe reaches, in metres: `3` is normal, up to `20`. Applies to hitting props as well as digging, since the game measures both with the same raycast. Works on any host. |
 

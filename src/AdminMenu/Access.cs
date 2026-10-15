@@ -190,6 +190,16 @@ namespace AdminMenu
             return lobby.m_SteamID != 0 && HasMod(SteamMatchmaking.GetLobbyOwner(lobby));
         }
 
+        /// <summary>Whether the host runs this mod at <paramref name="minimum"/> or later, read from the version it flags itself with.</summary>
+        public static bool HostVersionAtLeast(string minimum)
+        {
+            var lobby = LobbyId();
+            if (lobby.m_SteamID == 0)
+                return false;
+            var owner = SteamMatchmaking.GetLobbyOwner(lobby);
+            return owner.m_SteamID != 0 && ModVersion.AtLeast(SteamMatchmaking.GetLobbyMemberData(lobby, owner, MemberKey), minimum);
+        }
+
         public static bool HasMod(FirstPersonController player)
         {
             return player != null && (player.isLocalPlayer || HasMod(new CSteamID(player.playerID)));

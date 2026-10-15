@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.10";
+        public const string PluginVersion = "0.1.11";
 
         /// <summary>
         /// The mod author's Steam ID (darkharasho). Always treated as a trusted admin, in addition to whoever
@@ -87,7 +87,9 @@ namespace AdminMenu
                 "Dig 3x faster.", null,
                 new ConfigurationManagerAttributes { DispName = "Super speed pickaxe", Order = 5 }));
             QuickOffer = Config.Bind("Cheats", "QuickOffer", false, new ConfigDescription(
-                "Offer the whole stack to the forge in one press, instead of one item at a time. Works on any host.", null,
+                "Offer the whole stack to the forge in one press, instead of one item at a time. Works on any host: "
+                + "when the host runs this mod the stack goes in at once, otherwise about 25 items a second, the most "
+                + "a vanilla host's forge credits without losing items.", null,
                 new ConfigurationManagerAttributes { DispName = "Quick offer", Order = 3 }));
             PickaxeDigSize = Config.Bind("Cheats", "PickaxeDigSize", Cheats.VanillaDigSize, new ConfigDescription(
                 "How big a hole each dig takes out: 0.35 is the normal pickaxe, 1.5 matches a bomb's crater. "
@@ -108,6 +110,7 @@ namespace AdminMenu
             Patch(typeof(RagdollReviveFix));
             Patch(typeof(DigSpeedPatch));
             Patch(typeof(QuickOfferPatch));
+            Patch(typeof(ForgeBulkCreditPatch));
             Patch(typeof(BombPickaxePatch));
             Patch(typeof(LongReachPatch));
 

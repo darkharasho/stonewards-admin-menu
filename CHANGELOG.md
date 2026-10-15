@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.11
+
+- Fix: **Quick offer** no longer loses most of what you offer. The forge credits an item only when its fly-in animation finishes, and it has just 20 of those visuals per resource; every item past the 20th of a burst found the pool empty, skipped its animation and was never credited — but had already left your inventory. Offering a 30,000-diamond stack in one press credited 20 diamonds and destroyed the rest, which is how two stacks bought two levels.
+- A host running this mod now credits a multi-item offer directly, without the animation, so the whole stack counts. It clamps the count to what the offering slot really holds first, so nobody can claim more than they give.
+- The levels a big offer pays for now arrive one after another: the game levels up at most once per offer and banks the rest, so when a draft closes the host opens the next one while the bank still covers a level.
+- Against a host without this mod (or with 0.1.10 or older), quick offer now sends no more than that forge can animate — about 25 items a second instead of the vanilla 10. Slower than one press, but nothing is lost.
+- Diamonds lost to the old behaviour can't be recovered; the mod never saw them credited.
+
 ## 0.1.10
 
 - New cheat: **Pickaxe reach**, a slider from the pickaxe's normal 3 metres out to 20. The game measures a swing with one raycast that it fixes at 3, so this re-measures it at the distance you choose. That one raycast serves both halves of a swing, which means the reach applies to hitting props and destructibles as well as to digging terrain — there is no separate number to lengthen only one of them. Nothing downstream needed changing: the dig itself already traces 100 metres, and neither endpoint checks how far away you were.
