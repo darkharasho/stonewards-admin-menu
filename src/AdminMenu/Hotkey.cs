@@ -35,8 +35,19 @@ namespace AdminMenu
             if (shortcut.MainKey == KeyCode.None)
                 return false;
 
+            // Not shortcut.IsDown(): BepInEx also rejects the press while any other key is held,
+            // so the hotkey would do nothing while moving (W) or sprinting (Shift).
             if (LegacyAvailable)
-                return shortcut.IsDown();
+            {
+                if (!Input.GetKeyDown(shortcut.MainKey))
+                    return false;
+                foreach (var modifier in shortcut.Modifiers)
+                {
+                    if (!Input.GetKey(modifier))
+                        return false;
+                }
+                return true;
+            }
 
             var keyboard = Keyboard.current;
             if (keyboard == null || !TryGetKey(shortcut.MainKey, out var main) || !keyboard[main].wasPressedThisFrame)

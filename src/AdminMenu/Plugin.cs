@@ -13,7 +13,7 @@ namespace AdminMenu
     {
         public const string PluginGuid = "com.darkharasho.stonewards.adminmenu";
         public const string PluginName = "AdminMenu";
-        public const string PluginVersion = "0.1.11";
+        public const string PluginVersion = "0.1.12";
 
         /// <summary>
         /// The mod author's Steam ID (darkharasho). Always treated as a trusted admin, in addition to whoever

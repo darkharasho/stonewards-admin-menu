@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.12
+
+- The menu hotkeys now work while you're moving or holding other keys. Before, pressing one while holding W, Shift or any other key did nothing.
+
 ## 0.1.11
 
 - Fix: **Quick offer** no longer loses most of what you offer. The forge credits an item only when its fly-in animation finishes, and it has just 20 of those visuals per resource; every item past the 20th of a burst found the pool empty, skipped its animation and was never credited — but had already left your inventory. Offering a 30,000-diamond stack in one press credited 20 diamonds and destroyed the rest, which is how two stacks bought two levels.
